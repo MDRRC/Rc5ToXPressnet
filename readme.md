@@ -1,6 +1,8 @@
 # Rc5 To XPressNet converter (Work in progress!)
 
-The Rc5 to XpressNet convertor is an interface between an RC5 remote control and the [XPressnet bus](www.lenzusa.com/1newsite1/Manuals/xpressnet.pdf). it is based on 
+The Rc5 to XpressNet convertor is an interface between an RC5 remote control and the [XPressnet bus](www.lenzusa.com/1newsite1/Manuals/xpressnet.pdf). 
+
+It is based on: 
 
  * An Ardiuno Mega 2560 Mini
  * An [Arduino Mega 2560](https://store.arduino.cc/arduino-mega-2560-rev3) will also work but the board is way bigger. 
