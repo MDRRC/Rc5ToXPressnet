@@ -18,15 +18,14 @@ The Rc5ToXPressnet is inteded to used with an [Uhlenbrock Iris infrared control]
  
 ## Connections
 
-| Ardiono Mega  | Device      |
-| ------------  | ----------- |
-|               | TSOP        |
-|               | SSD1306 SCA |
-|               | SSD1306 SCL |
-|               | MAX485      |
-|               | MAX485      |
-|               | MAX485      |
-| ------------  | ----------- |
+| Ardiono Mega  | Device         |
+| ------------  | -------------- |
+|               | TSOP4836 pin   |
+|               | SSD1306 SCA    |
+|               | SSD1306 SCL    |
+|               | MAX485 pin     |
+|               | MAX485 pin     |
+|               | MAX485 pin     |
 
 ## Used library's
 If you want to build the code yourself or update / change the code following library's are required.
