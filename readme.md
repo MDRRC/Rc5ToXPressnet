@@ -17,7 +17,17 @@ The Rc5ToXPressnet is inteded to used with an [Uhlenbrock Iris infrared control]
  * [Roco MultiMaus as master](https://www.roco.cc/en/product/5215-multimaus-0-0-0-0-0-004001-0/products.html).
  
 ## Connections
- 
+
+| Ardiono Mega  | Device      |
+| ------------  | ----------- |
+|               | TSOP        |
+|               | SSD1306 SCA |
+|               | SSD1306 SCL |
+|               | MAX485      |
+|               | MAX485      |
+|               | MAX485      |
+| ------------  | ----------- |
+
 ## Used library's
 If you want to build the code yourself or update / change the code following library's are required.
  * [Rc5](https://github.com/guyc/RC5) for IR cobversion.
@@ -25,8 +35,6 @@ If you want to build the code yourself or update / change the code following lib
  * [XpressNet Client Library](http://pgahtow.de/wiki/index.php?title=XpressNet) for XpressNet protocol handling.
  * [Adafruit-SSD1306-Library](https://github.com/adafruit/Adafruit_SSD1306) to control the display.
  * [Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library) for graphic control of the display.
-
-More info will follow soon!   
 
 ## State machine code update
 
