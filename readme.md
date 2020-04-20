@@ -6,7 +6,7 @@ It is based on:
 
  * An Ardiuno Mega 2560 Mini
  * An [Arduino Mega 2560](https://store.arduino.cc/arduino-mega-2560-rev3) will also work but the board is way bigger. 
- * RS485 driver IC.
+ * MAX485 RS485 driver IC.
  * 128*64 pixels OLED SSD1306 I2C display. 
  * TSOP4836 IR receiver.
  
@@ -14,11 +14,11 @@ The Rc5ToXPressnet is inteded to used with an [Uhlenbrock Iris infrared control]
  
 ## Tested with
  * [MDRRC-II (Lite)](https://robertdotevers.wordpress.com/). 
- * [Roco MultiMaus as master](https://www.roco.cc/en/product/5215-multimaus-0-0-0-0-0-004001-0/products.html).
+ * [Roco MultiMaus as master](https://www.roco.cc/en/product/5215-multimaus-0-0-0-0-0-004001-0/products.html). Only a smlaal test, needs more extensive testing...
  
 ## Connections
 
-| Ardiono Mega  | Device         |
+| Ardiuno Mega  | Device         |
 | ------------  | -------------- |
 |               | TSOP4836 pin   |
 |               | SSD1306 SCA    |
