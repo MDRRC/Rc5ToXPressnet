@@ -12,6 +12,11 @@ It is based on:
  
 The Rc5ToXPressnet is inteded to used with an [Uhlenbrock Iris infrared control](https://www.uhlenbrock.de/de_DE/produkte/digizen/I63D744D-001.htm!ArcEntryInfo=0004.9.I63D744D). Will also work with other RC5 remote controls for a TV but the layout and commands may e different, so adjustment of the code by yourself may be required.
  
+## Functions
+ * Control speed, direction and functions (F0..F12) of a locomotive (F5..F12 t.b.a).
+ * Select a locomotive on one of the 4 loc selection buttons (for now only one loc and no storage of selected loc, will be added).
+ * Control accesory decoders (turn outs for example) (t.b.a.)
+
 ## Tested with
  * [MDRRC-II (Lite)](https://robertdotevers.wordpress.com/). 
  * [Roco MultiMaus as master](https://www.roco.cc/en/product/5215-multimaus-0-0-0-0-0-004001-0/products.html). Only a quick test, needs more extensive testing...
@@ -20,12 +25,14 @@ The Rc5ToXPressnet is inteded to used with an [Uhlenbrock Iris infrared control]
 
 | Ardiuno Mega  | Device         |
 | ------------  | -------------- |
-|               | TSOP4836 pin   |
-|               | SSD1306 SCA    |
-|               | SSD1306 SCL    |
-|               | MAX485 pin     |
-|               | MAX485 pin     |
-|               | MAX485 pin     |
+| IO 7          | TSOP4836 pin 1 |
+| SCA 20        | SSD1306 SCA    |
+| SCL 21        | SSD1306 SCL    |
+| RXD1 19       | MAX485 pin 1   |
+| TXD1 18       | MAX485 pin 4   |
+| IO   3        | MAX485 pin 2/3 |
+
+And of course put the VCC and GND of the SSD1306 / MAX485 to 5V and TSOP4836 to 3V3 of the Arduino Mega 2560 board. 
 
 ## Used library's
 If you want to build the code yourself or update / change the code following library's are required.
