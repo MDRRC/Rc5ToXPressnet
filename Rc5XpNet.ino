@@ -13,6 +13,7 @@
 #include <StateMachine.h>
 #include <Wire.h>
 #include <XpressNet.h>
+#include <eeprom.h>
 
 /***********************************************************************************************************************
    D E F I N E S
@@ -62,6 +63,8 @@ static uint8_t LocActualDirection      = 0;
 static uint32_t LocActualFunctions     = 0;
 static bool LocInfoChanged             = false;
 static bool locInfoRefresh             = false;
+
+int EepromLocAddressA = 0;
 
 /**
  * Forward direction loc symbol, see https://diyusthad.com/image2cpp for conversion of an image.
@@ -183,7 +186,14 @@ void StateInit()
 {
     if (Stm.executeOnce)
     {
-        locInfo.Address = 3;
+
+        locInfo.Address = (uint16_t)EEPROM.read(EepromLocAddressA);
+        locInfo.Address |= (uint16_t)EEPROM.read(EepromLocAddressA + 1);
+
+        if (locInfo.Address > 9999)
+        {
+            locInfo.Address = 3;
+        }
         XPNet.getLocoInfo(locInfo.Address >> 8, locInfo.Address & 0xFF);
     }
     else
@@ -531,6 +541,8 @@ void StateSelectLoc()
                 if (LocAddressSelect > 0)
                 {
                     locInfo.Address = LocAddressSelect;
+                    EEPROM.write(EepromLocAddressA, locInfo.Address >> 8);
+                    EEPROM.write(EepromLocAddressA + 1, locInfo.Address & 0xFF);
                 }
                 Rc5NewData = false;
                 Stm.transitionTo(StmStateGetLocInfo);
