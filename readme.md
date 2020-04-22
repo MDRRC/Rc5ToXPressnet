@@ -10,7 +10,7 @@ It is based on:
  * 128*64 pixels OLED SSD1306 I2C display. 
  * TSOP4836 IR receiver.
  
-The Rc5ToXPressnet is intended to used with an for example an [Uhlenbrock Iris infrared control](https://www.uhlenbrock.de/de_DE/produkte/digizen/I63D744D-001.htm!ArcEntryInfo=0004.9.I63D744D). Will also work with other RC5 remote controls for a TV but the layout and commands may e different, so adjustment of the code by yourself may be required.
+The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infrared control](https://www.uhlenbrock.de/de_DE/produkte/digizen/I63D744D-001.htm!ArcEntryInfo=0004.9.I63D744D). Will also work with other RC5 remote controls for a TV but the layout and commands may e different, so adjustment of the code by yourself may be required.
  
 ## Functions
  * Control speed, direction and functions (F0..F12) of a locomotive (F5..F12 t.b.a and display of functions also).
