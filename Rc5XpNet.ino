@@ -47,20 +47,21 @@ static XpressNetClass XPNet;
 static StateMachine Stm = StateMachine();
 static LocInfo locInfo;
 static LocInfo locInfoPrevious;
-static uint8_t Rc5Toggle           = 0;
-static uint8_t Rc5TogglePrevious   = 0xFF;
-static uint8_t Rc5Address          = 0;
-static uint8_t Rc5Command          = 0;
-static bool Rc5NewData             = false;
-static bool PowerOnStart           = true;
-static uint32_t previousMillis     = 0;
-static byte XpressNetPowerStat     = 0xFF;
-static uint16_t LocAddressSelect   = 0;
-static uint8_t LocActualSpeed      = 0;
-static uint8_t LocActualDirection  = 0;
-static uint32_t LocActualFunctions = 0;
-static bool LocInfoChanged         = false;
-static bool locInfoRefresh         = false;
+static uint8_t Rc5Toggle               = 0;
+static uint8_t Rc5TogglePrevious       = 0xFF;
+static uint8_t Rc5Address              = 0;
+static uint8_t Rc5Command              = 0;
+static bool Rc5NewData                 = false;
+static bool PowerOnStart               = true;
+static uint32_t previousMillis         = 0;
+static byte XpressNetPowerStat         = 0xFF;
+static byte XpressNetPowerStatPrevious = 0xFF;
+static uint16_t LocAddressSelect       = 0;
+static uint8_t LocActualSpeed          = 0;
+static uint8_t LocActualDirection      = 0;
+static uint32_t LocActualFunctions     = 0;
+static bool LocInfoChanged             = false;
+static bool locInfoRefresh             = false;
 
 /**
  * Forward direction loc symbol, see https://diyusthad.com/image2cpp for conversion of an image.
@@ -526,10 +527,12 @@ void StateSelectLoc()
                 Rc5NewData = false;
                 break;
             case 13:
-                // Loc button.
-                locInfo.Address = LocAddressSelect;
-                Rc5NewData      = false;
-
+                // Loc button to select loc. When address still zero keep old address.
+                if (LocAddressSelect > 0)
+                {
+                    locInfo.Address = LocAddressSelect;
+                }
+                Rc5NewData = false;
                 Stm.transitionTo(StmStateGetLocInfo);
                 break;
             default: Rc5NewData = false; break;
@@ -558,7 +561,11 @@ bool transitionShortCircuit()
     bool Result = false;
     if (XpressNetPowerStat == csShortCircuit)
     {
-        Result = true;
+        if (XpressNetPowerStatPrevious != XpressNetPowerStat)
+        {
+            XpressNetPowerStatPrevious = XpressNetPowerStat;
+            Result                     = true;
+        }
     }
     return (Result);
 }
@@ -570,7 +577,11 @@ bool transitionServiceMode()
     bool Result = false;
     if (XpressNetPowerStat == csServiceMode)
     {
-        Result = true;
+        if (XpressNetPowerStatPrevious != XpressNetPowerStat)
+        {
+            XpressNetPowerStatPrevious = XpressNetPowerStat;
+            Result                     = true;
+        }
     }
     return (Result);
 }
@@ -582,7 +593,11 @@ bool transitionPowerOff()
     bool Result = false;
     if (XpressNetPowerStat == csTrackVoltageOff)
     {
-        Result = true;
+        if (XpressNetPowerStatPrevious != XpressNetPowerStat)
+        {
+            XpressNetPowerStatPrevious = XpressNetPowerStat;
+            Result                     = true;
+        }
     }
     return (Result);
 }
@@ -594,7 +609,11 @@ bool transitionPowerOn()
     bool Result = false;
     if (XpressNetPowerStat == csNormal)
     {
-        Result = true;
+        if (XpressNetPowerStatPrevious != XpressNetPowerStat)
+        {
+            XpressNetPowerStatPrevious = XpressNetPowerStat;
+            Result                     = true;
+        }
     }
     return (Result);
 }
