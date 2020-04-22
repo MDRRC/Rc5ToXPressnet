@@ -17,7 +17,7 @@ The Rc5ToXPressnet is intended to used with an for example an [Uhlenbrock Iris i
  
  ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/loccontrol.JPG)
  
- * Select a locomotive on one of the 4 loc selection buttons (for now only one loc and no storage of selected loc, will be added).
+ * Select a locomotive on one of the 4 loc selection buttons (for now only one loc can be selected).
  
  ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/select.JPG)
  
