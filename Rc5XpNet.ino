@@ -61,10 +61,15 @@ static uint16_t LocAddressSelect       = 0;
 static uint8_t LocActualSpeed          = 0;
 static uint8_t LocActualDirection      = 0;
 static uint32_t LocActualFunctions     = 0;
+static uint16_t TurnOutAddress         = 0;
 static bool LocInfoChanged             = false;
 static bool locInfoRefresh             = false;
 
-int EepromLocAddressA = 0;
+int EepromLocAddressA     = 0;
+int EepromTurnoutAddressA = 0x10;
+int EepromTurnoutAddressB = 0x12;
+int EepromTurnoutAddressC = 0x14;
+int EepromTurnoutAddressD = 0x16;
 
 /**
  * Forward direction loc symbol, see https://diyusthad.com/image2cpp for conversion of an image.
@@ -85,6 +90,15 @@ const unsigned char locBitmapBw[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x07
     0xc1, 0x80, 0x40, 0x61, 0xc3, 0xc0, 0xc0, 0x33, 0xe7, 0x61, 0x80, 0x1f, 0x3e, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 /**
+ * Light bulb symbol.
+ */
+const unsigned char lightBulb[] PROGMEM
+    = { 0x00, 0x00, 0x00, 0x00, 0x60, 0x00, 0x04, 0x62, 0x00, 0x06, 0x06, 0x00, 0x00, 0x00, 0x00, 0x71, 0xf8, 0x60,
+          0x33, 0x0c, 0xc0, 0x06, 0x06, 0x00, 0x0c, 0x03, 0x00, 0xec, 0x03, 0x70, 0xec, 0x03, 0x70, 0x0c, 0x03, 0x00,
+          0x04, 0x02, 0x00, 0x36, 0x06, 0x40, 0x62, 0x04, 0x60, 0x03, 0x0c, 0x00, 0x01, 0x08, 0x00, 0x01, 0x98, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00, 0x00 };
+
+/**
  * States of the system.
  */
 State* StmStateInit         = Stm.addState(&StateInit);
@@ -95,6 +109,7 @@ State* StmStatePowerOff     = Stm.addState(&StatePowerOff);
 State* StmStatePowerOn      = Stm.addState(&StatePowerOn);
 State* StmStateGetLocInfo   = Stm.addState(&StateGetLocInfo);
 State* StmStateSelectLoc    = Stm.addState(&StateSelectLoc);
+State* StmStateTurnOut      = Stm.addState(&StateTurnOut);
 
 /* Conversion table for normal speed to 28 steps DCC speed. */
 const uint8_t SpeedStep28TableToDcc[29]
@@ -136,12 +151,12 @@ void UpdateStatusRow(const __FlashStringHelper* StatusRowPtr)
 void ShowLocInfo()
 {
     // Show address
-    display.fillRect(0, 13, 127, 64, SSD1306_BLACK);
+    display.fillRect(0, 13, 127, 51, SSD1306_BLACK);
 
     display.setTextSize(2);
     display.setCursor(3, 14);
     display.print(locInfo.Address);
-    display.setCursor(3, 34);
+    display.setCursor(3, 37);
 
     // Show speed
     if (locInfo.Steps == 2)
@@ -165,7 +180,6 @@ void ShowLocInfo()
     }
 
     // Show decoder speed steps
-    display.fillRect(110, 0, 17, 10, SSD1306_BLACK);
     display.setTextSize(0);
     display.setCursor(110, 0);
     switch (locInfo.Steps)
@@ -176,8 +190,29 @@ void ShowLocInfo()
     default: break;
     }
 
+    // Show functions, first light.
+    if ((locInfo.Functions & 0x01) == 0x01)
+    {
+        display.drawBitmap(70, 33, lightBulb, 20, 24, SSD1306_WHITE);
+    }
+
     display.display();
     LocInfoChanged = false;
+}
+
+/***********************************************************************************************************************
+ */
+void SendTurnOutCommand(uint8_t EepromAddress, uint8_t Direction)
+{
+    uint8_t TurnOutData = 0x08;
+    TurnOutAddress      = (uint16_t)EEPROM.read(EepromAddress);
+    TurnOutAddress |= (uint16_t)EEPROM.read(EepromAddress + 1);
+
+    if (TurnOutAddress < 9999)
+    {
+        TurnOutData |= Direction;
+        XPNet.setTrntPos((TurnOutAddress - 1) >> 8, (uint8_t)(TurnOutAddress - 1), TurnOutData);
+    }
 }
 
 /***********************************************************************************************************************
@@ -393,7 +428,46 @@ void StatePowerOn()
                     LocActualSpeed++;
                 }
                 break;
-
+            case 40:
+                // Turnout A red.
+                SendTurnOutCommand(EepromTurnoutAddressA, 0);
+                Rc5NewData = false;
+                break;
+            case 41:
+                // Turnout A green.
+                SendTurnOutCommand(EepromTurnoutAddressA, 1);
+                Rc5NewData = false;
+                break;
+            case 42:
+                // Turnout B red.
+                SendTurnOutCommand(EepromTurnoutAddressB, 0);
+                Rc5NewData = false;
+                break;
+            case 43:
+                // Turnout B green.
+                SendTurnOutCommand(EepromTurnoutAddressB, 1);
+                Rc5NewData = false;
+                break;
+            case 44:
+                // Turnout C red.
+                SendTurnOutCommand(EepromTurnoutAddressC, 0);
+                Rc5NewData = false;
+                break;
+            case 45:
+                // Turnout C green.
+                SendTurnOutCommand(EepromTurnoutAddressC, 1);
+                Rc5NewData = false;
+                break;
+            case 46:
+                // Turnout D red.
+                SendTurnOutCommand(EepromTurnoutAddressD, 0);
+                Rc5NewData = false;
+                break;
+            case 47:
+                // Turnout D green.
+                SendTurnOutCommand(EepromTurnoutAddressD, 1);
+                Rc5NewData = false;
+                break;
             default: break;
             }
 
@@ -443,9 +517,133 @@ void StatePowerOn()
                 Serial.print("Steps : ");
                 Serial.print(locInfo.Steps);
                 Serial.println("");
-
 #endif
             }
+        }
+    }
+}
+
+/***********************************************************************************************************************
+ */
+void StateTurnOut()
+{
+    uint8_t TurnOutData      = 0;
+    uint8_t TurnOutDirection = 0;
+    bool SendTurnoutData     = false;
+
+    if (Stm.executeOnce)
+    {
+        display.fillRect(0, 0, 127, 10, SSD1306_BLACK);
+        UpdateStatusRow(F("TURNOUT"));
+        PowerOnStart = false;
+
+        display.fillRect(0, 11, 127, 51, SSD1306_BLACK);
+
+        display.setTextSize(2);
+        display.setCursor(3, 20);
+        display.print(TurnOutAddress);
+        display.display();
+    }
+    else
+    {
+        if (Rc5NewData == true)
+        {
+            switch (Rc5Command)
+            {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+            case 6:
+            case 7:
+            case 8:
+            case 9:
+                TurnOutAddress *= 10;
+                TurnOutAddress += (uint16_t)(Rc5Command);
+
+                display.fillRect(2, 13, 50, 20, SSD1306_BLACK);
+                display.setTextSize(2);
+                display.setCursor(3, 20);
+
+                if (TurnOutAddress > 9999)
+                {
+                    TurnOutAddress = 0;
+                }
+
+                display.print(TurnOutAddress);
+                display.display();
+                Rc5NewData = false;
+                break;
+            case 40:
+                Rc5NewData       = false;
+                TurnOutDirection = 0;
+                SendTurnoutData  = true;
+                EEPROM.write(EepromTurnoutAddressA, TurnOutAddress >> 8);
+                EEPROM.write(EepromTurnoutAddressA + 1, TurnOutAddress & 0xFF);
+                break;
+            case 41:
+                Rc5NewData       = false;
+                TurnOutDirection = 1;
+                SendTurnoutData  = true;
+                EEPROM.write(EepromTurnoutAddressA, TurnOutAddress >> 8);
+                EEPROM.write(EepromTurnoutAddressA + 1, TurnOutAddress & 0xFF);
+                break;
+            case 42:
+                Rc5NewData       = false;
+                TurnOutDirection = 0;
+                SendTurnoutData  = true;
+                EEPROM.write(EepromTurnoutAddressB, TurnOutAddress >> 8);
+                EEPROM.write(EepromTurnoutAddressB + 1, TurnOutAddress & 0xFF);
+                break;
+            case 43:
+                Rc5NewData       = false;
+                TurnOutDirection = 1;
+                SendTurnoutData  = true;
+                EEPROM.write(EepromTurnoutAddressB, TurnOutAddress >> 8);
+                EEPROM.write(EepromTurnoutAddressB + 1, TurnOutAddress & 0xFF);
+                break;
+            case 44:
+                Rc5NewData       = false;
+                TurnOutDirection = 0;
+                SendTurnoutData  = true;
+                EEPROM.write(EepromTurnoutAddressC, TurnOutAddress >> 8);
+                EEPROM.write(EepromTurnoutAddressC + 1, TurnOutAddress & 0xFF);
+                break;
+            case 45:
+                Rc5NewData       = false;
+                TurnOutDirection = 1;
+                SendTurnoutData  = true;
+                EEPROM.write(EepromTurnoutAddressC, TurnOutAddress >> 8);
+                EEPROM.write(EepromTurnoutAddressC + 1, TurnOutAddress & 0xFF);
+                break;
+            case 46:
+                Rc5NewData       = false;
+                TurnOutDirection = 0;
+                SendTurnoutData  = true;
+                EEPROM.write(EepromTurnoutAddressD, TurnOutAddress >> 8);
+                EEPROM.write(EepromTurnoutAddressD + 1, TurnOutAddress & 0xFF);
+                break;
+            case 47:
+                Rc5NewData       = false;
+                TurnOutDirection = 1;
+                SendTurnoutData  = true;
+                EEPROM.write(EepromTurnoutAddressD, TurnOutAddress >> 8);
+                EEPROM.write(EepromTurnoutAddressD + 1, TurnOutAddress & 0xFF);
+                break;
+            default: break;
+            }
+        }
+
+        if (SendTurnoutData == true)
+        {
+            TurnOutData = 0x08;
+            if (TurnOutDirection == 1)
+            {
+                TurnOutData |= 1;
+            }
+            XPNet.setTrntPos((TurnOutAddress - 1) >> 8, (uint8_t)(TurnOutAddress - 1), TurnOutData);
         }
     }
 }
@@ -478,7 +676,6 @@ void StateGetLocInfo()
             }
 
             locInfoRefresh = false;
-
             Stm.transitionTo(StmStatePowerOn);
         }
     }
@@ -674,6 +871,22 @@ bool transitionRc5SelectLocButton()
 
 /***********************************************************************************************************************
  */
+bool transitionRc5TurnOutButton()
+{
+    bool Result = false;
+    if (Rc5NewData == true)
+    {
+        if (Rc5Command == 14)
+        {
+            Result     = true;
+            Rc5NewData = false;
+        }
+    }
+    return (Result);
+}
+
+/***********************************************************************************************************************
+ */
 
 /***********************************************************************************************************************
    E X P O R T E D   F U N C T I O N S
@@ -731,6 +944,7 @@ void setup()
     StmStatePowerOn->addTransition(&transitionShortCircuit, StmStateShortCircuit);
     StmStatePowerOn->addTransition(&transitionRc5StopButton, StmStatePowerOff);
     StmStatePowerOn->addTransition(&transitionRc5SelectLocButton, StmStateSelectLoc);
+    StmStatePowerOn->addTransition(&transitionRc5TurnOutButton, StmStateTurnOut);
 
     StmStateEmergency->addTransition(&transitionPowerOn, StmStateGetLocInfo);
     StmStateEmergency->addTransition(&transitionPowerOff, StmStatePowerOff);
@@ -761,6 +975,12 @@ void setup()
     StmStateSelectLoc->addTransition(&transitionEmergency, StmStateEmergency);
     StmStateSelectLoc->addTransition(&transitionShortCircuit, StmStateShortCircuit);
     StmStateSelectLoc->addTransition(&transitionRc5StopButton, StmStatePowerOff);
+
+    StmStateTurnOut->addTransition(&transitionServiceMode, StmStateServiceMode);
+    StmStateTurnOut->addTransition(&transitionEmergency, StmStateEmergency);
+    StmStateTurnOut->addTransition(&transitionShortCircuit, StmStateShortCircuit);
+    StmStateTurnOut->addTransition(&transitionRc5StopButton, StmStatePowerOff);
+    StmStateTurnOut->addTransition(&transitionRc5TurnOutButton, StmStateGetLocInfo);
 }
 
 /**
