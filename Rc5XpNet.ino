@@ -22,12 +22,8 @@
 #define SCREEN_HEIGHT 64     // OLED display height, in pixels
 #define OLED_RESET -1        // Reset pin # (or -1 if sharing Arduino reset pin)
 #define XPRESSNET_ADDRESS 30 // XpNet address of device
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-#define XPRESSNET_PIN 3 // Read/write pin 485 chip
-#else
-#define XPRESSNET_PIN 2 // Read/write pin 485 chip
-#endif
-#define IR_PIN 7 // IR sensor pin
+#define XPRESSNET_PIN 3      // Read/write pin 485 chip
+#define IR_PIN 7             // IR sensor pin
 
 struct LocInfo
 {
@@ -35,7 +31,7 @@ struct LocInfo
     uint8_t Speed;
     uint8_t Steps;
     uint8_t Direction;
-    uint8_t Functions;
+    uint16_t Functions;
 };
 
 /***********************************************************************************************************************
@@ -62,6 +58,8 @@ static uint8_t LocActualSpeed          = 0;
 static uint8_t LocActualDirection      = 0;
 static uint32_t LocActualFunctions     = 0;
 static uint16_t TurnOutAddress         = 0;
+static uint8_t FunctionOffset          = 0;
+static uint32_t FunctionOffsetTime     = 0;
 static bool LocInfoChanged             = false;
 static bool locInfoRefresh             = false;
 
@@ -99,6 +97,12 @@ const unsigned char lightBulb[] PROGMEM
           0x00, 0x00, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00, 0x00 };
 
 /**
+ * Background for function.
+ */
+const unsigned char function[] PROGMEM = { 0x1e, 0x00, 0x3f, 0x00, 0x7f, 0x80, 0xff, 0xc0, 0xff, 0xc0, 0xff, 0xc0, 0xff,
+    0xc0, 0x7f, 0x80, 0x3f, 0x00, 0x1e, 0x00 };
+
+/**
  * States of the system.
  */
 State* StmStateInit         = Stm.addState(&StateInit);
@@ -133,6 +137,7 @@ void ShowInitSreen(void)
     display.setCursor(0, 26);
     display.println(F(" RC5 XPNET"));
     display.print(F("   1.0.0"));
+    display.display();
 }
 
 /***********************************************************************************************************************
@@ -148,17 +153,48 @@ void UpdateStatusRow(const __FlashStringHelper* StatusRowPtr)
 
 /***********************************************************************************************************************
  */
+void ShowFPlus4Function(void)
+{
+    display.setTextSize(0);
+    display.setCursor(70, 0);
+    display.println("F+4");
+    display.display();
+}
+
+/***********************************************************************************************************************
+ */
+void ShowFPlus8Function(void)
+{
+    display.setTextSize(0);
+    display.setCursor(70, 0);
+    display.println("F+8");
+    display.display();
+}
+
+/***********************************************************************************************************************
+ */
+void ShowFPlusRemove(void)
+{
+    display.fillRect(69, 0, 20, 10, SSD1306_BLACK);
+    display.display();
+}
+
+/***********************************************************************************************************************
+ * redraw screen with loc information.
+ */
 void ShowLocInfo()
 {
-    // Show address
-    display.fillRect(0, 13, 127, 51, SSD1306_BLACK);
+    uint8_t Index;
 
+    // Show address, first clear loc info screen.
+    display.fillRect(0, 8, 127, 56, SSD1306_BLACK);
+    display.setTextColor(SSD1306_WHITE);
     display.setTextSize(2);
-    display.setCursor(3, 14);
+    display.setCursor(3, 11);
     display.print(locInfo.Address);
-    display.setCursor(3, 37);
 
     // Show speed
+    display.setCursor(3, 31);
     if (locInfo.Steps == 2)
     {
         display.print(SpeedStep28TableFromDcc[locInfo.Speed]);
@@ -169,14 +205,14 @@ void ShowLocInfo()
     }
 
     // Show direction
-    display.fillRect(69, 10, 29, 23, SSD1306_BLACK);
+    display.fillRect(69, 8, 29, 23, SSD1306_BLACK);
     if (locInfo.Direction == 1)
     {
-        display.drawBitmap(70, 11, locBitmapFw, 28, 22, SSD1306_WHITE);
+        display.drawBitmap(70, 8, locBitmapFw, 28, 22, SSD1306_WHITE);
     }
     else
     {
-        display.drawBitmap(70, 11, locBitmapBw, 28, 22, SSD1306_WHITE);
+        display.drawBitmap(70, 8, locBitmapBw, 28, 22, SSD1306_WHITE);
     }
 
     // Show decoder speed steps
@@ -193,9 +229,23 @@ void ShowLocInfo()
     // Show functions, first light.
     if ((locInfo.Functions & 0x01) == 0x01)
     {
-        display.drawBitmap(70, 33, lightBulb, 20, 24, SSD1306_WHITE);
+        display.drawBitmap(70, 30, lightBulb, 20, 24, SSD1306_WHITE);
     }
 
+    // Show function F1..F9
+    display.setTextColor(SSD1306_BLACK);
+    for (Index = 0; Index < 9; Index++)
+    {
+        // Index + 1 because bit 0 is light.
+        if (locInfo.Functions & (1 << (Index + 1)))
+        {
+            display.drawBitmap(7 + (Index * 13), 54, function, 10, 10, SSD1306_WHITE);
+            display.setCursor(9 + (Index * 13), 56);
+            display.print(Index + 1);
+        }
+    }
+
+    display.setTextColor(SSD1306_WHITE);
     display.display();
     LocInfoChanged = false;
 }
@@ -271,8 +321,8 @@ void StateServiceMode()
 {
     if (Stm.executeOnce)
     {
-        UpdateStatusRow(F("SERVICE"));
         ShowInitSreen();
+        UpdateStatusRow(F("SERVICE"));
         PowerOnStart = false;
     }
     else
@@ -313,7 +363,8 @@ void StatePowerOn()
         locInfoRefresh = false;
         UpdateStatusRow(F("POWER ON"));
         ShowLocInfo();
-        PowerOnStart = false;
+        PowerOnStart   = false;
+        FunctionOffset = 0;
     }
     else
     {
@@ -353,40 +404,82 @@ void StatePowerOn()
                 }
                 break;
             case 19:
-                // Light off
+                // off (light) button
                 LocActualFunctions &= ~(1 << 0);
                 XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF, LocActualFunctions & 0x01, 0);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             case 20:
                 // F0 (Light) button on
                 LocActualFunctions |= 1;
                 XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF, LocActualFunctions & 0x01, 0);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             case 21:
-                // F1 button
-                LocActualFunctions ^= (1 << 1);
-                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF, (LocActualFunctions >> 1) & 0x01, 1);
-                Rc5NewData = false;
+                // F1 button toggle function
+                LocActualFunctions ^= (1 << (1 + FunctionOffset));
+                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF,
+                    (LocActualFunctions >> (1 + FunctionOffset)) & 0x01, (1 + FunctionOffset));
+                Rc5NewData         = false;
+                FunctionOffsetTime = millis();
                 break;
             case 22:
-                // F2 button
-                LocActualFunctions ^= (1 << 2);
-                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF, (LocActualFunctions >> 2) & 0x01, 2);
-                Rc5NewData = false;
+                // F2 button toggle function
+                LocActualFunctions ^= (1 << (2 + FunctionOffset));
+                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF,
+                    (LocActualFunctions >> (2 + FunctionOffset)) & 0x01, (2 + FunctionOffset));
+                Rc5NewData         = false;
+                FunctionOffsetTime = millis();
                 break;
             case 23:
-                // F3 button
-                LocActualFunctions ^= (1 << 3);
-                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF, (LocActualFunctions >> 3) & 0x01, 3);
-                Rc5NewData = false;
+                // F3 button toggle function
+                LocActualFunctions ^= (1 << (3 + FunctionOffset));
+                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF,
+                    (LocActualFunctions >> (3 + FunctionOffset)) & 0x01, (3 + FunctionOffset));
+                Rc5NewData         = false;
+                FunctionOffsetTime = millis();
                 break;
             case 24:
-                // F4 button
-                LocActualFunctions ^= (1 << 4);
-                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF, (LocActualFunctions >> 4) & 0x01, 4);
+                // F4 button toggle function
+                LocActualFunctions ^= (1 << (4 + FunctionOffset));
+                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF,
+                    (LocActualFunctions >> (4 + FunctionOffset)) & 0x01, (4 + FunctionOffset));
+                Rc5NewData         = false;
+                FunctionOffsetTime = millis();
+                break;
+            case 29:
+                // F+4 button
                 Rc5NewData = false;
+                if ((FunctionOffset == 0) || (FunctionOffset == 8))
+                {
+                    FunctionOffset     = 4;
+                    FunctionOffsetTime = millis();
+                    ShowFPlus4Function();
+                }
+                else
+                {
+                    ShowFPlusRemove();
+                    FunctionOffset = 0;
+                }
+                break;
+            case 30:
+                // F+8 button
+                Rc5NewData = false;
+                if ((FunctionOffset == 0) || (FunctionOffset == 4))
+                {
+                    FunctionOffset     = 8;
+                    FunctionOffsetTime = millis();
+                    ShowFPlus8Function();
+                }
+                else
+                {
+                    ShowFPlusRemove();
+                    FunctionOffset = 0;
+                }
                 break;
             case 32:
                 // + button
@@ -432,41 +525,57 @@ void StatePowerOn()
                 // Turnout A red.
                 SendTurnOutCommand(EepromTurnoutAddressA, 0);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             case 41:
                 // Turnout A green.
                 SendTurnOutCommand(EepromTurnoutAddressA, 1);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             case 42:
                 // Turnout B red.
                 SendTurnOutCommand(EepromTurnoutAddressB, 0);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             case 43:
                 // Turnout B green.
                 SendTurnOutCommand(EepromTurnoutAddressB, 1);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             case 44:
                 // Turnout C red.
                 SendTurnOutCommand(EepromTurnoutAddressC, 0);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             case 45:
                 // Turnout C green.
                 SendTurnOutCommand(EepromTurnoutAddressC, 1);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             case 46:
                 // Turnout D red.
                 SendTurnOutCommand(EepromTurnoutAddressD, 0);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             case 47:
                 // Turnout D green.
                 SendTurnOutCommand(EepromTurnoutAddressD, 1);
                 Rc5NewData = false;
+                ShowFPlusRemove();
+                FunctionOffset = 0;
                 break;
             default: break;
             }
@@ -509,6 +618,9 @@ void StatePowerOn()
 
                 XPNet.getLocoInfo(locInfo.Address >> 8, locInfo.Address & 0xFF);
 
+                ShowFPlusRemove();
+                FunctionOffset = 0;
+
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
                 Serial.print("Speed : ");
                 Serial.print(LocActualSpeed);
@@ -537,7 +649,7 @@ void StateTurnOut()
         UpdateStatusRow(F("TURNOUT"));
         PowerOnStart = false;
 
-        display.fillRect(0, 11, 127, 51, SSD1306_BLACK);
+        display.fillRect(0, 10, 127, 54, SSD1306_BLACK);
 
         display.setTextSize(2);
         display.setCursor(3, 20);
@@ -563,15 +675,27 @@ void StateTurnOut()
                 TurnOutAddress *= 10;
                 TurnOutAddress += (uint16_t)(Rc5Command);
 
-                display.fillRect(2, 13, 50, 20, SSD1306_BLACK);
-                display.setTextSize(2);
-                display.setCursor(3, 20);
-
                 if (TurnOutAddress > 9999)
                 {
                     TurnOutAddress = 0;
                 }
 
+                // Show address.
+                display.fillRect(2, 13, 50, 22, SSD1306_BLACK);
+                display.setTextSize(2);
+                display.setCursor(3, 20);
+                display.print(TurnOutAddress);
+                display.display();
+                Rc5NewData = false;
+                break;
+            case 20:
+                // Use F0 button to reset address.
+                TurnOutAddress = 0;
+
+                // Show address.
+                display.fillRect(2, 13, 50, 22, SSD1306_BLACK);
+                display.setTextSize(2);
+                display.setCursor(3, 20);
                 display.print(TurnOutAddress);
                 display.display();
                 Rc5NewData = false;
@@ -691,7 +815,7 @@ void StateSelectLoc()
 
         LocAddressSelect = 0;
 
-        display.fillRect(0, 10, 128, 64, SSD1306_BLACK);
+        display.fillRect(0, 8, 128, 53, SSD1306_BLACK);
         display.setTextSize(2);
         display.setCursor(1, 14);
         display.print("Loc  :");
@@ -887,6 +1011,20 @@ bool transitionRc5TurnOutButton()
 
 /***********************************************************************************************************************
  */
+bool transitionFunctionOffSetReset()
+{
+    if ((millis() - FunctionOffsetTime) > 10000)
+    {
+        FunctionOffsetTime = millis();
+        if (FunctionOffset != 0)
+        {
+            ShowFPlusRemove();
+            FunctionOffset = 0;
+        }
+    }
+
+    return (false);
+}
 
 /***********************************************************************************************************************
    E X P O R T E D   F U N C T I O N S
@@ -945,6 +1083,7 @@ void setup()
     StmStatePowerOn->addTransition(&transitionRc5StopButton, StmStatePowerOff);
     StmStatePowerOn->addTransition(&transitionRc5SelectLocButton, StmStateSelectLoc);
     StmStatePowerOn->addTransition(&transitionRc5TurnOutButton, StmStateTurnOut);
+    StmStatePowerOn->addTransition(&transitionFunctionOffSetReset, StmStatePowerOn);
 
     StmStateEmergency->addTransition(&transitionPowerOn, StmStateGetLocInfo);
     StmStateEmergency->addTransition(&transitionPowerOff, StmStatePowerOff);
@@ -1054,22 +1193,19 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
     Serial.print(" F0 : ");
     Serial.print(F0);
     Serial.print(" F1 : ");
-    Serial.print(F1);
-    Serial.print(" F2 : ");
-    Serial.print(F2);
-    Serial.print(" F3 : ");
-    Serial.println(F3);
+    Serial.println(F1);
 #endif
+
     if (locInfo.Address == Address)
     {
         locInfo.Address   = Address;
         locInfo.Speed     = Speed;
         locInfo.Direction = Direction;
+        // Function F0..F4
         locInfo.Functions = (F0 >> 4) & 0x01;
         locInfo.Functions |= (F0 << 1) & 0x1E;
-        locInfo.Functions |= ((uint32_t)(F1) << 5);
-        locInfo.Functions |= ((uint32_t)(F2) << 13);
-        locInfo.Functions |= ((uint32_t)(F3) << 21);
+        // Function F5..F12, higher functions are not processed.
+        locInfo.Functions |= ((uint16_t)(F1) << 5);
 
         switch (Steps)
         {
@@ -1113,4 +1249,6 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
 
     Busy = Busy;
     Req  = Req;
+    F2   = F2;
+    F3   = F3;
 }
