@@ -43,55 +43,8 @@ And of course put the VCC and GND of the SSD1306 / MAX485 to 5V and TSOP4836 to 
 ## Used library's
 If you want to build the code yourself or update / change the code following library's are required.
  * [Rc5](https://github.com/guyc/RC5) for IR RC5 receive.
- * [StateMachine](https://github.com/jrullan/StateMachine) for the state machine (requires some updates, see below!) 
+ * [StateMachine](https://github.com/MDRRC/StateMachine) State machine ([Forked from](https://github.com/jrullan/StateMachine)) 
  * [XpressNet Client Library](http://pgahtow.de/wiki/index.php?title=XpressNet) for XpressNet protocol handling.
  * [Adafruit-SSD1306-Library](https://github.com/adafruit/Adafruit_SSD1306) to control the display.
  * [Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library) for graphic control of the display.
 
-## State machine code update
-
- * Add code below to class StateMachine
-  
-```c
-  bool transition = false;
-```
-  
- * Update run as shwon below
- 
- ```c
- void StateMachine::run() {
-  // Serial.println("StateMachine::run()");
-  // Early exit, no states are defined
-  if (this->stateList->size() == 0) return;
-
-  // Initial condition
-  if (this->currentState == -1) {
-    this->currentState = 0;
-  }
-
-  // Execute state logic and return transitioned
-  // to state number.
-  int next = stateList->get(this->currentState)->execute();
-  if (this->transition == false) {
-    this->executeOnce = (this->currentState == next) ? false : true;
-    this->currentState = next;
-  } else {
-    this->transition = false;
-  }
-}
-```
-
-* Update code as shown below
-
-```c
-/*
- * Jump to a state
- * given by a pointer to that state.
- */
-State* StateMachine::transitionTo(State* s) {
-  this->currentState = s->index;
-  this->executeOnce = true;
-  this->transition = true;
-  return s;
-}
-```
