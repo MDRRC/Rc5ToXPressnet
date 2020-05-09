@@ -31,12 +31,12 @@ The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infr
 
 | Ardiuno Mega  | Device         |
 | ------------  | -------------- |
-| IO 7          | TSOP4836 pin 1 |
+| IO 2          | TSOP4836 pin 1 |
 | SCA 20        | SSD1306 SCA    |
 | SCL 21        | SSD1306 SCL    |
 | RXD1 19       | MAX485 pin 1   |
 | TXD1 18       | MAX485 pin 4   |
-| IO   3        | MAX485 pin 2/3 |
+| IO   22       | MAX485 pin 2/3 |
 
 And of course put the VCC and GND of the SSD1306 / MAX485 to 5V and TSOP4836 to 3V3 of the Arduino Mega 2560 board. 
 
