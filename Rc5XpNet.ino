@@ -56,18 +56,23 @@ static byte XpressNetPowerStatPrevious = 0xFF;
 static uint16_t LocAddressSelect       = 0;
 static uint8_t LocActualSpeed          = 0;
 static uint8_t LocActualDirection      = 0;
-static uint32_t LocActualFunctions     = 0;
+static uint16_t LocActualFunctions     = 0;
+static uint8_t LocLastSelected         = 0;
 static uint16_t TurnOutAddress         = 0;
 static uint8_t FunctionOffset          = 0;
 static uint32_t FunctionOffsetTime     = 0;
 static bool LocInfoChanged             = false;
 static bool locInfoRefresh             = false;
 
-int EepromLocAddressA     = 0;
-int EepromTurnoutAddressA = 0x10;
-int EepromTurnoutAddressB = 0x12;
-int EepromTurnoutAddressC = 0x14;
-int EepromTurnoutAddressD = 0x16;
+int EepromLocAddressA            = 0;
+int EepromLocAddressB            = 0x02;
+int EepromLocAddressC            = 0x04;
+int EepromLocAddressD            = 0x06;
+int EepromLocAddressLastSelected = 0x08;
+int EepromTurnoutAddressA        = 0x10;
+int EepromTurnoutAddressB        = 0x12;
+int EepromTurnoutAddressC        = 0x14;
+int EepromTurnoutAddressD        = 0x16;
 
 /**
  * Forward direction loc symbol, see https://diyusthad.com/image2cpp for conversion of an image.
@@ -215,8 +220,20 @@ void ShowLocInfo()
         display.drawBitmap(70, 8, locBitmapBw, 28, 22, SSD1306_WHITE);
     }
 
-    // Show decoder speed steps
+    // Show which loc is selected
+    display.fillRect(100, 0, 28, 8, SSD1306_BLACK);
     display.setTextSize(0);
+    display.setCursor(100, 0);
+
+    switch (LocLastSelected)
+    {
+    case 0: display.print("A"); break;
+    case 1: display.print("B"); break;
+    case 2: display.print("C"); break;
+    case 3: display.print("D"); break;
+    }
+
+    // Show decoder speed steps
     display.setCursor(110, 0);
     switch (locInfo.Steps)
     {
@@ -232,16 +249,23 @@ void ShowLocInfo()
         display.drawBitmap(70, 30, lightBulb, 20, 24, SSD1306_WHITE);
     }
 
-    // Show function F1..F9
+    // Show function F1..F10 (F10 as 0)
     display.setTextColor(SSD1306_BLACK);
-    for (Index = 0; Index < 9; Index++)
+    for (Index = 0; Index < 10; Index++)
     {
         // Index + 1 because bit 0 is light.
         if (locInfo.Functions & (1 << (Index + 1)))
         {
-            display.drawBitmap(7 + (Index * 13), 54, function, 10, 10, SSD1306_WHITE);
-            display.setCursor(9 + (Index * 13), 56);
-            display.print(Index + 1);
+            display.drawBitmap(4 + (Index * 12), 54, function, 10, 10, SSD1306_WHITE);
+            display.setCursor(6 + (Index * 12), 56);
+            if (Index < 9)
+            {
+                display.print(Index + 1);
+            }
+            else
+            {
+                display.print("0");
+            }
         }
     }
 
@@ -271,9 +295,36 @@ void StateInit()
 {
     if (Stm.executeOnce)
     {
+        // Read loc address and set to default when required...
+        LocLastSelected = (uint8_t)EEPROM.read(EepromLocAddressLastSelected);
 
-        locInfo.Address = (uint16_t)EEPROM.read(EepromLocAddressA);
-        locInfo.Address |= (uint16_t)EEPROM.read(EepromLocAddressA + 1);
+        switch (LocLastSelected)
+        {
+        case 0:
+            locInfo.Address = ((uint16_t)(EEPROM.read(EepromLocAddressA)) << 8);
+            locInfo.Address |= (uint16_t)EEPROM.read(EepromLocAddressA + 1);
+            break;
+        case 1:
+            locInfo.Address = ((uint16_t)(EEPROM.read(EepromLocAddressB)) << 8);
+            locInfo.Address |= (uint16_t)EEPROM.read(EepromLocAddressB + 1);
+            break;
+        case 2:
+            locInfo.Address = ((uint16_t)(EEPROM.read(EepromLocAddressC)) << 8);
+            locInfo.Address |= (uint16_t)EEPROM.read(EepromLocAddressC + 1);
+            break;
+        case 3:
+            locInfo.Address = ((uint16_t)(EEPROM.read(EepromLocAddressD)) << 8);
+            locInfo.Address |= (uint16_t)EEPROM.read(EepromLocAddressD + 1);
+            break;
+        default:
+            // Probably no selection done yet, set 3 and A as default.
+            locInfo.Address = 3;
+            LocLastSelected = 0;
+            EEPROM.write(EepromLocAddressA, locInfo.Address >> 8);
+            EEPROM.write(EepromLocAddressA + 1, locInfo.Address & 0xFF);
+            EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+            break;
+        }
 
         if (locInfo.Address > 9999)
         {
@@ -357,7 +408,7 @@ void StatePowerOff()
 void StatePowerOn()
 {
     bool TransmitSpeedDirectionData = false;
-
+    uint16_t LocAddress             = 0;
     if (Stm.executeOnce)
     {
         locInfoRefresh = false;
@@ -365,6 +416,7 @@ void StatePowerOn()
         ShowLocInfo();
         PowerOnStart   = false;
         FunctionOffset = 0;
+        ShowFPlusRemove();
     }
     else
     {
@@ -577,6 +629,71 @@ void StatePowerOn()
                 ShowFPlusRemove();
                 FunctionOffset = 0;
                 break;
+            case 51:
+                // A button to select loc
+                LocAddress = ((uint16_t)(EEPROM.read(EepromLocAddressA)) << 8);
+                LocAddress |= (uint16_t)EEPROM.read(EepromLocAddressA + 1);
+
+                if (LocLastSelected != 0)
+                {
+                    if (LocAddress < 9999)
+                    {
+                        locInfo.Address = LocAddress;
+                        LocLastSelected = 0;
+                        EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+                        Stm.transitionTo(StmStateGetLocInfo);
+                    }
+                }
+                break;
+            case 52:
+                // B Button to select loc
+                LocAddress = ((uint16_t)(EEPROM.read(EepromLocAddressB)) << 8);
+                LocAddress |= (uint16_t)EEPROM.read(EepromLocAddressB + 1);
+
+                if (LocLastSelected != 1)
+                {
+                    if (LocAddress < 9999)
+                    {
+                        locInfo.Address = LocAddress;
+                        LocLastSelected = 1;
+                        EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+                        Stm.transitionTo(StmStateGetLocInfo);
+                    }
+                }
+                break;
+            case 53:
+                // C Button to select loc
+                LocAddress = ((uint16_t)(EEPROM.read(EepromLocAddressC)) << 8);
+                LocAddress |= (uint16_t)EEPROM.read(EepromLocAddressC + 1);
+
+                if (LocLastSelected != 2)
+                {
+                    if (LocAddress < 9999)
+                    {
+                        locInfo.Address = LocAddress;
+                        LocLastSelected = 2;
+                        EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+                        Stm.transitionTo(StmStateGetLocInfo);
+                    }
+                }
+                break;
+            case 54:
+                // D Button to select loc
+                LocAddress = ((uint16_t)(EEPROM.read(EepromLocAddressD)) << 8);
+                LocAddress |= (uint16_t)EEPROM.read(EepromLocAddressD + 1);
+
+                if (LocLastSelected != 3)
+                {
+                    if (LocAddress < 9999)
+                    {
+                        locInfo.Address = LocAddress;
+                        LocLastSelected = 3;
+                        EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+                        Stm.transitionTo(StmStateGetLocInfo);
+                    }
+                }
+                break;
+
             default: break;
             }
 
@@ -814,8 +931,8 @@ void StateSelectLoc()
         UpdateStatusRow(F("SELECT LOC"));
 
         LocAddressSelect = 0;
-
-        display.fillRect(0, 8, 128, 53, SSD1306_BLACK);
+        display.fillRect(110, 0, 28, 8, SSD1306_BLACK);
+        display.fillRect(0, 8, 128, 56, SSD1306_BLACK);
         display.setTextSize(2);
         display.setCursor(1, 14);
         display.print("Loc  :");
@@ -852,22 +969,104 @@ void StateSelectLoc()
                 // Display
                 display.fillRect(74, 10, 51, 64, SSD1306_BLACK);
                 display.setCursor(75, 14);
+                display.setTextSize(2);
                 display.print(LocAddressSelect);
                 display.display();
 
                 Rc5NewData = false;
                 break;
             case 13:
-                // Loc button to select loc. When address still zero keep old address.
+                // Loc button to exit.
+                Rc5NewData = false;
                 if (LocAddressSelect > 0)
                 {
                     locInfo.Address = LocAddressSelect;
-                    EEPROM.write(EepromLocAddressA, locInfo.Address >> 8);
-                    EEPROM.write(EepromLocAddressA + 1, locInfo.Address & 0xFF);
                 }
-                Rc5NewData = false;
                 Stm.transitionTo(StmStateGetLocInfo);
                 break;
+            case 20:
+                // Use F0 button to reset address.
+                LocAddressSelect = 0;
+                display.fillRect(74, 10, 51, 64, SSD1306_BLACK);
+                display.setCursor(75, 14);
+                display.setTextSize(2);
+                display.print(LocAddressSelect);
+                display.display();
+                Rc5NewData = false;
+                break;
+            case 51:
+                // A button
+                if (LocAddressSelect > 0)
+                {
+                    locInfo.Address = LocAddressSelect;
+                    LocLastSelected = 0;
+                    EEPROM.write(EepromLocAddressA, locInfo.Address >> 8);
+                    EEPROM.write(EepromLocAddressA + 1, locInfo.Address & 0xFF);
+                    EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+
+                    display.fillRect(100, 0, 9, 8, SSD1306_BLACK);
+                    display.setCursor(100, 0);
+                    display.setTextSize(0);
+                    display.print("A");
+                    display.display();
+                }
+                Rc5NewData = false;
+                break;
+            case 52:
+                // B button
+                if (LocAddressSelect > 0)
+                {
+                    locInfo.Address = LocAddressSelect;
+                    LocLastSelected = 1;
+                    EEPROM.write(EepromLocAddressB, locInfo.Address >> 8);
+                    EEPROM.write(EepromLocAddressB + 1, locInfo.Address & 0xFF);
+                    EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+
+                    display.fillRect(100, 0, 9, 8, SSD1306_BLACK);
+                    display.setCursor(100, 0);
+                    display.setTextSize(0);
+                    display.print("B");
+                    display.display();
+                }
+                Rc5NewData = false;
+                break;
+            case 53:
+                // C button
+                if (LocAddressSelect > 0)
+                {
+                    locInfo.Address = LocAddressSelect;
+                    LocLastSelected = 2;
+                    EEPROM.write(EepromLocAddressC, locInfo.Address >> 8);
+                    EEPROM.write(EepromLocAddressC + 1, locInfo.Address & 0xFF);
+                    EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+
+                    display.fillRect(100, 0, 9, 8, SSD1306_BLACK);
+                    display.setCursor(100, 0);
+                    display.setTextSize(0);
+                    display.print("C");
+                    display.display();
+                }
+                Rc5NewData = false;
+                break;
+            case 54:
+                // D button
+                if (LocAddressSelect > 0)
+                {
+                    locInfo.Address = LocAddressSelect;
+                    LocLastSelected = 3;
+                    EEPROM.write(EepromLocAddressD, locInfo.Address >> 8);
+                    EEPROM.write(EepromLocAddressD + 1, locInfo.Address & 0xFF);
+                    EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+
+                    display.fillRect(100, 0, 9, 8, SSD1306_BLACK);
+                    display.setCursor(100, 0);
+                    display.setTextSize(0);
+                    display.print("D");
+                    display.display();
+                }
+                Rc5NewData = false;
+                break;
+
             default: Rc5NewData = false; break;
             }
         }
@@ -1243,6 +1442,8 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
                 {
                     LocActualDirection = 0;
                 }
+
+                LocActualFunctions = locInfo.Functions;
             }
         }
     }
