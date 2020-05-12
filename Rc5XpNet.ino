@@ -22,8 +22,8 @@
 #define SCREEN_HEIGHT 64     // OLED display height, in pixels
 #define OLED_RESET -1        // Reset pin # (or -1 if sharing Arduino reset pin)
 #define XPRESSNET_ADDRESS 30 // XpNet address of device
-#define XPRESSNET_PIN 3      // Read/write pin 485 chip
-#define IR_PIN 7             // IR sensor pin
+#define XPRESSNET_PIN 22     // Read/write pin 485 chip
+#define IR_PIN 2             // IR sensor pin
 
 struct LocInfo
 {
@@ -59,6 +59,7 @@ static uint8_t LocActualDirection      = 0;
 static uint16_t LocActualFunctions     = 0;
 static uint8_t LocLastSelected         = 0;
 static uint16_t TurnOutAddress         = 0;
+static uint32_t TurnOutAddressTimeout  = 0;
 static uint8_t FunctionOffset          = 0;
 static uint32_t FunctionOffsetTime     = 0;
 static bool LocInfoChanged             = false;
@@ -75,37 +76,69 @@ int EepromTurnoutAddressC        = 0x14;
 int EepromTurnoutAddressD        = 0x16;
 
 /**
- * Forward direction loc symbol, see https://diyusthad.com/image2cpp for conversion of an image.
+ * Forward direction loc symbol, see for conversion of an image https://diyusthad.com/image2cpp .
  */
-const unsigned char locBitmapFw[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x3f, 0xfe, 0x00, 0x00, 0x7f, 0xfe, 0x00, 0x00,
-    0x78, 0x0e, 0x07, 0x00, 0x38, 0x0c, 0x0f, 0x00, 0x38, 0x0c, 0x0f, 0x00, 0x38, 0x0c, 0x0f, 0x00, 0x38, 0x1c, 0x0f,
-    0x80, 0x7f, 0xff, 0xff, 0xc0, 0x7f, 0xff, 0xff, 0xc0, 0x7f, 0xff, 0xff, 0xe0, 0x7f, 0xff, 0xff, 0xe0, 0x70, 0x3f,
-    0xff, 0xc0, 0x20, 0x3f, 0xff, 0xc0, 0x60, 0x1f, 0xff, 0x80, 0x63, 0x1c, 0x78, 0xc0, 0x63, 0x1c, 0x38, 0x60, 0x20,
-    0x18, 0x30, 0x60, 0x30, 0x3c, 0x38, 0x60, 0x18, 0x6e, 0x7c, 0xc0, 0x0f, 0xc7, 0xcf, 0x80, 0x00, 0x00, 0x00, 0x00 };
+const unsigned char locBitmapFw[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x7f, 0xfc, 0x00, 0x00, 0x7f, 0xfc, 0x00, 0x00,
+    0x70, 0x1c, 0x1c, 0x00, 0x30, 0x18, 0x1e, 0x00, 0x30, 0x18, 0x1e, 0x00, 0x38, 0x18, 0x3e, 0x00, 0x7f, 0xff, 0xff,
+    0x00, 0x7f, 0xff, 0xff, 0x00, 0x7f, 0xff, 0xff, 0x80, 0x7f, 0xff, 0xff, 0x80, 0x70, 0x7f, 0xff, 0x00, 0x60, 0x3f,
+    0xff, 0x00, 0x62, 0x3f, 0xff, 0x00, 0x62, 0x38, 0xf1, 0x80, 0x60, 0x30, 0x61, 0x80, 0x30, 0x78, 0x61, 0x80, 0x38,
+    0xd8, 0xf3, 0x00, 0x1f, 0xcf, 0x9f, 0x00, 0x02, 0x02, 0x04, 0x00 };
 
 /**
  * Backward direction loc symbol.
  */
-const unsigned char locBitmapBw[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0xff, 0xc0, 0x00, 0x07, 0xff, 0xe0,
-    0x0e, 0x07, 0x01, 0xe0, 0x0f, 0x03, 0x01, 0xc0, 0x0f, 0x03, 0x01, 0xc0, 0x0f, 0x03, 0x01, 0xc0, 0x1f, 0x03, 0x81,
-    0xc0, 0x3f, 0xff, 0xff, 0xe0, 0x3f, 0xff, 0xff, 0xe0, 0x7f, 0xff, 0xff, 0xe0, 0x7f, 0xff, 0xff, 0xe0, 0x3f, 0xff,
-    0xc0, 0xe0, 0x3f, 0xff, 0xc0, 0x40, 0x1f, 0xff, 0x80, 0x60, 0x31, 0xe3, 0x8c, 0x60, 0x61, 0xc3, 0x8c, 0x60, 0x60,
-    0xc1, 0x80, 0x40, 0x61, 0xc3, 0xc0, 0xc0, 0x33, 0xe7, 0x61, 0x80, 0x1f, 0x3e, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x00 };
+const unsigned char locBitmapBw[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0x80, 0x00, 0x0f, 0xff, 0x80,
+    0x0e, 0x0e, 0x03, 0x80, 0x1e, 0x06, 0x03, 0x00, 0x1e, 0x06, 0x03, 0x00, 0x1f, 0x06, 0x07, 0x00, 0x3f, 0xff, 0xff,
+    0x80, 0x3f, 0xff, 0xff, 0x80, 0x7f, 0xff, 0xff, 0x80, 0x7f, 0xff, 0xff, 0x80, 0x3f, 0xff, 0x83, 0x80, 0x3f, 0xff,
+    0x01, 0x80, 0x3f, 0xff, 0x11, 0x80, 0x63, 0xc7, 0x11, 0x80, 0x61, 0x83, 0x01, 0x80, 0x61, 0x87, 0x83, 0x00, 0x33,
+    0xc6, 0xc7, 0x00, 0x3e, 0x7c, 0xfe, 0x00, 0x08, 0x10, 0x10, 0x00 };
 
 /**
  * Light bulb symbol.
  */
-const unsigned char lightBulb[] PROGMEM
-    = { 0x00, 0x00, 0x00, 0x00, 0x60, 0x00, 0x04, 0x62, 0x00, 0x06, 0x06, 0x00, 0x00, 0x00, 0x00, 0x71, 0xf8, 0x60,
-          0x33, 0x0c, 0xc0, 0x06, 0x06, 0x00, 0x0c, 0x03, 0x00, 0xec, 0x03, 0x70, 0xec, 0x03, 0x70, 0x0c, 0x03, 0x00,
-          0x04, 0x02, 0x00, 0x36, 0x06, 0x40, 0x62, 0x04, 0x60, 0x03, 0x0c, 0x00, 0x01, 0x08, 0x00, 0x01, 0x98, 0x00,
-          0x00, 0x00, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00, 0x00 };
+const unsigned char lightBulb[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0xc0, 0x00, 0x0c, 0xcc, 0x00, 0x04, 0x08, 0x00,
+    0x40, 0xc0, 0x80, 0x63, 0xf1, 0x80, 0x04, 0x08, 0x00, 0x0c, 0x0c, 0x00, 0xc8, 0x04, 0xc0, 0xe8, 0x04, 0xc0, 0x08,
+    0x04, 0x00, 0x0c, 0x0c, 0x00, 0x24, 0x09, 0x00, 0x66, 0x19, 0x80, 0x02, 0x10, 0x00, 0x03, 0x30, 0x00, 0x00, 0x00,
+    0x00, 0x01, 0xe0, 0x00, 0x01, 0xe0, 0x00, 0x01, 0x20, 0x00, 0x00, 0xc0, 0x00, 0x00, 0x00, 0x00 };
 
 /**
  * Background for function.
  */
 const unsigned char function[] PROGMEM = { 0x1e, 0x00, 0x3f, 0x00, 0x7f, 0x80, 0xff, 0xc0, 0xff, 0xc0, 0xff, 0xc0, 0xff,
     0xc0, 0x7f, 0x80, 0x3f, 0x00, 0x1e, 0x00 };
+
+/**
+ * Turnout symbol.
+ */
+const unsigned char turnout[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0xf0, 0x00, 0x00, 0x07, 0xf0, 0x00,
+    0x00, 0x0f, 0xf0, 0x00, 0x00, 0x3f, 0xf0, 0x00, 0x00, 0x3f, 0xf0, 0x00, 0x00, 0x7f, 0xf0, 0x00, 0x01, 0xff, 0xe0,
+    0x00, 0x03, 0xff, 0x80, 0x00, 0x03, 0xff, 0x80, 0x00, 0x07, 0xff, 0x00, 0x00, 0x1f, 0xfc, 0x00, 0x00, 0x1f, 0xfc,
+    0x00, 0x00, 0x3f, 0xf8, 0x00, 0x00, 0xff, 0xf0, 0x00, 0xff, 0xff, 0xff, 0xf0, 0xff, 0xff, 0xff, 0xf0, 0xff, 0xff,
+    0xff, 0xf0, 0xff, 0xff, 0xff, 0xf0, 0xff, 0xff, 0xff, 0xf0, 0xff, 0xff, 0xff, 0xf0, 0xff, 0xff, 0xff, 0xf0, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00 };
+
+/**
+ * Diverging turnout symbol.
+ */
+const unsigned char turnoutDiverging[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0xf0, 0x00, 0x00, 0x07,
+    0xf0, 0x00, 0x00, 0x0c, 0x10, 0x00, 0x00, 0x38, 0x10, 0x00, 0x00, 0x38, 0x10, 0x00, 0x00, 0x70, 0x70, 0x00, 0x01,
+    0xc0, 0xe0, 0x00, 0x03, 0x83, 0x80, 0x00, 0x03, 0x83, 0x80, 0x00, 0x06, 0x07, 0x00, 0x00, 0x1c, 0x0c, 0x00, 0x00,
+    0x1c, 0x0c, 0x00, 0x00, 0x38, 0x38, 0x00, 0x00, 0xe0, 0x70, 0x00, 0xff, 0xc1, 0xff, 0xf0, 0xff, 0xc1, 0xff, 0xf0,
+    0x80, 0x03, 0xff, 0xf0, 0x80, 0x07, 0xff, 0xf0, 0x80, 0x07, 0xff, 0xf0, 0x80, 0x1f, 0xff, 0xf0, 0xff, 0xff, 0xff,
+    0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+/**
+ * Forward turnout symbol.
+ */
+const unsigned char turnoutForward[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0xf0, 0x00, 0x00, 0x07, 0xf0,
+    0x00, 0x00, 0x0f, 0xf0, 0x00, 0x00, 0x3f, 0xf0, 0x00, 0x00, 0x3f, 0xf0, 0x00, 0x00, 0x7f, 0xf0, 0x00, 0x01, 0xff,
+    0xe0, 0x00, 0x03, 0xff, 0x80, 0x00, 0x03, 0xff, 0x80, 0x00, 0x07, 0xff, 0x00, 0x00, 0x1f, 0xfc, 0x00, 0x00, 0x1f,
+    0xfc, 0x00, 0x00, 0x3f, 0xf8, 0x00, 0x00, 0xff, 0xf0, 0x00, 0xff, 0xff, 0xff, 0xf0, 0xff, 0xff, 0xff, 0xf0, 0x80,
+    0x00, 0x00, 0x10, 0x80, 0x00, 0x00, 0x10, 0x80, 0x00, 0x00, 0x10, 0x80, 0x00, 0x00, 0x10, 0xff, 0xff, 0xff, 0xf0,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00 };
 
 /**
  * States of the system.
@@ -147,9 +180,17 @@ void ShowInitSreen(void)
 
 /***********************************************************************************************************************
  */
-void UpdateStatusRow(const __FlashStringHelper* StatusRowPtr)
+void UpdateStatusRow(const __FlashStringHelper* StatusRowPtr, bool FullClear)
 {
-    display.fillRect(3, 0, 73, 10, SSD1306_BLACK);
+    if (FullClear == true)
+    {
+        display.fillRect(0, 0, 127, 10, SSD1306_BLACK);
+    }
+    else
+    {
+        display.fillRect(0, 0, 50, 10, SSD1306_BLACK);
+    }
+
     display.setTextSize(0);
     display.setCursor(3, 0);
     display.println(StatusRowPtr);
@@ -160,6 +201,7 @@ void UpdateStatusRow(const __FlashStringHelper* StatusRowPtr)
  */
 void ShowFPlus4Function(void)
 {
+    display.fillRect(69, 0, 20, 10, SSD1306_BLACK);
     display.setTextSize(0);
     display.setCursor(70, 0);
     display.println("F+4");
@@ -170,6 +212,7 @@ void ShowFPlus4Function(void)
  */
 void ShowFPlus8Function(void)
 {
+    display.fillRect(69, 0, 20, 10, SSD1306_BLACK);
     display.setTextSize(0);
     display.setCursor(70, 0);
     display.println("F+8");
@@ -192,7 +235,7 @@ void ShowLocInfo()
     uint8_t Index;
 
     // Show address, first clear loc info screen.
-    display.fillRect(0, 8, 127, 56, SSD1306_BLACK);
+    display.fillRect(0, 10, 127, 54, SSD1306_BLACK);
     display.setTextColor(SSD1306_WHITE);
     display.setTextSize(2);
     display.setCursor(3, 11);
@@ -210,14 +253,14 @@ void ShowLocInfo()
     }
 
     // Show direction
-    display.fillRect(69, 8, 29, 23, SSD1306_BLACK);
+    display.fillRect(69, 10, 29, 23, SSD1306_BLACK);
     if (locInfo.Direction == 1)
     {
-        display.drawBitmap(70, 8, locBitmapFw, 28, 22, SSD1306_WHITE);
+        display.drawBitmap(70, 10, locBitmapFw, 26, 20, SSD1306_WHITE);
     }
     else
     {
-        display.drawBitmap(70, 8, locBitmapBw, 28, 22, SSD1306_WHITE);
+        display.drawBitmap(70, 10, locBitmapBw, 26, 20, SSD1306_WHITE);
     }
 
     // Show which loc is selected
@@ -246,7 +289,7 @@ void ShowLocInfo()
     // Show functions, first light.
     if ((locInfo.Functions & 0x01) == 0x01)
     {
-        display.drawBitmap(70, 30, lightBulb, 20, 24, SSD1306_WHITE);
+        display.drawBitmap(70, 32, lightBulb, 18, 22, SSD1306_WHITE);
     }
 
     // Show function F1..F10 (F10 as 0)
@@ -279,13 +322,29 @@ void ShowLocInfo()
 void SendTurnOutCommand(uint8_t EepromAddress, uint8_t Direction)
 {
     uint8_t TurnOutData = 0x08;
-    TurnOutAddress      = (uint16_t)EEPROM.read(EepromAddress);
-    TurnOutAddress |= (uint16_t)EEPROM.read(EepromAddress + 1);
+    TurnOutAddress      = ((uint16_t)(EEPROM.read(EepromAddress)) << 8);
+    TurnOutAddress |= (uint16_t)(EEPROM.read(EepromAddress + 1));
 
-    if (TurnOutAddress < 9999)
+    if (TurnOutAddress <= 9999)
     {
         TurnOutData |= Direction;
         XPNet.setTrntPos((TurnOutAddress - 1) >> 8, (uint8_t)(TurnOutAddress - 1), TurnOutData);
+
+        // Show in status row address and text
+        display.fillRect(25, 0, 38, 8, SSD1306_BLACK);
+        display.setTextSize(0);
+        display.setCursor(25, 0);
+        display.print(TurnOutAddress);
+        if (Direction == 0)
+        {
+            display.print("/");
+        }
+        else
+        {
+            display.print("-");
+        }
+        TurnOutAddressTimeout = millis();
+        display.display();
     }
 }
 
@@ -344,7 +403,7 @@ void StateEmergency()
     if (Stm.executeOnce)
     {
         XPNet.setPower(csEmergencyStop);
-        UpdateStatusRow(F("EMERGENCY"));
+        UpdateStatusRow(F("EMERGENCY"), true);
         PowerOnStart = false;
     }
     else
@@ -358,7 +417,7 @@ void StateShortCircuit()
 {
     if (Stm.executeOnce)
     {
-        UpdateStatusRow(F("SHORT"));
+        UpdateStatusRow(F("SHORT"), true);
         PowerOnStart = false;
     }
     else
@@ -373,7 +432,7 @@ void StateServiceMode()
     if (Stm.executeOnce)
     {
         ShowInitSreen();
-        UpdateStatusRow(F("SERVICE"));
+        UpdateStatusRow(F("SERVICE"), true);
         PowerOnStart = false;
     }
     else
@@ -387,7 +446,7 @@ void StatePowerOff()
 {
     if (Stm.executeOnce)
     {
-        UpdateStatusRow(F("POWER OFF"));
+        UpdateStatusRow(F("OFF"), true);
 
         if (PowerOnStart == false)
         {
@@ -412,7 +471,7 @@ void StatePowerOn()
     if (Stm.executeOnce)
     {
         locInfoRefresh = false;
-        UpdateStatusRow(F("POWER ON"));
+        UpdateStatusRow(F("ON"), true);
         ShowLocInfo();
         PowerOnStart   = false;
         FunctionOffset = 0;
@@ -577,57 +636,41 @@ void StatePowerOn()
                 // Turnout A red.
                 SendTurnOutCommand(EepromTurnoutAddressA, 0);
                 Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
                 break;
             case 41:
                 // Turnout A green.
                 SendTurnOutCommand(EepromTurnoutAddressA, 1);
                 Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
                 break;
             case 42:
                 // Turnout B red.
                 SendTurnOutCommand(EepromTurnoutAddressB, 0);
                 Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
                 break;
             case 43:
                 // Turnout B green.
                 SendTurnOutCommand(EepromTurnoutAddressB, 1);
                 Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
                 break;
             case 44:
                 // Turnout C red.
                 SendTurnOutCommand(EepromTurnoutAddressC, 0);
                 Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
                 break;
             case 45:
                 // Turnout C green.
                 SendTurnOutCommand(EepromTurnoutAddressC, 1);
                 Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
                 break;
             case 46:
                 // Turnout D red.
                 SendTurnOutCommand(EepromTurnoutAddressD, 0);
                 Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
                 break;
             case 47:
                 // Turnout D green.
                 SendTurnOutCommand(EepromTurnoutAddressD, 1);
                 Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
                 break;
             case 51:
                 // A button to select loc
@@ -638,6 +681,7 @@ void StatePowerOn()
                 {
                     if (LocAddress < 9999)
                     {
+                        locInfoRefresh  = true;
                         locInfo.Address = LocAddress;
                         LocLastSelected = 0;
                         EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
@@ -654,6 +698,7 @@ void StatePowerOn()
                 {
                     if (LocAddress < 9999)
                     {
+                        locInfoRefresh  = true;
                         locInfo.Address = LocAddress;
                         LocLastSelected = 1;
                         EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
@@ -670,6 +715,7 @@ void StatePowerOn()
                 {
                     if (LocAddress < 9999)
                     {
+                        locInfoRefresh  = true;
                         locInfo.Address = LocAddress;
                         LocLastSelected = 2;
                         EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
@@ -686,6 +732,7 @@ void StatePowerOn()
                 {
                     if (LocAddress < 9999)
                     {
+                        locInfoRefresh  = true;
                         locInfo.Address = LocAddress;
                         LocLastSelected = 3;
                         EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
@@ -693,7 +740,6 @@ void StatePowerOn()
                     }
                 }
                 break;
-
             default: break;
             }
 
@@ -763,7 +809,7 @@ void StateTurnOut()
     if (Stm.executeOnce)
     {
         display.fillRect(0, 0, 127, 10, SSD1306_BLACK);
-        UpdateStatusRow(F("TURNOUT"));
+        UpdateStatusRow(F("TURNOUT"), true);
         PowerOnStart = false;
 
         display.fillRect(0, 10, 127, 54, SSD1306_BLACK);
@@ -895,7 +941,7 @@ void StateGetLocInfo()
 {
     if (Stm.executeOnce)
     {
-        UpdateStatusRow(F("GET LOC"));
+        UpdateStatusRow(F("GET LOC"), true);
         locInfoRefresh = true;
         PowerOnStart   = false;
     }
@@ -928,7 +974,7 @@ void StateSelectLoc()
 {
     if (Stm.executeOnce)
     {
-        UpdateStatusRow(F("SELECT LOC"));
+        UpdateStatusRow(F("SELECT LOC"), true);
 
         LocAddressSelect = 0;
         display.fillRect(110, 0, 28, 8, SSD1306_BLACK);
@@ -1226,6 +1272,20 @@ bool transitionFunctionOffSetReset()
 }
 
 /***********************************************************************************************************************
+ */
+bool transitionTurnOutDirectionShowDisable()
+{
+    if ((millis() - TurnOutAddressTimeout) > 1500)
+    {
+        TurnOutAddressTimeout = millis();
+        display.fillRect(25, 0, 30, 8, SSD1306_BLACK);
+        display.display();
+    }
+
+    return (false);
+}
+
+/***********************************************************************************************************************
    E X P O R T E D   F U N C T I O N S
  **********************************************************************************************************************/
 
@@ -1252,7 +1312,7 @@ void setup()
     }
 
     ShowInitSreen();
-    UpdateStatusRow(F("CONNECTING"));
+    UpdateStatusRow(F("CONNECTING"), true);
 
     // Init Xpressnet.
     XPNet.start(XPRESSNET_ADDRESS, XPRESSNET_PIN);
@@ -1283,6 +1343,7 @@ void setup()
     StmStatePowerOn->addTransition(&transitionRc5SelectLocButton, StmStateSelectLoc);
     StmStatePowerOn->addTransition(&transitionRc5TurnOutButton, StmStateTurnOut);
     StmStatePowerOn->addTransition(&transitionFunctionOffSetReset, StmStatePowerOn);
+    StmStatePowerOn->addTransition(&transitionTurnOutDirectionShowDisable, StmStatePowerOn);
 
     StmStateEmergency->addTransition(&transitionPowerOn, StmStateGetLocInfo);
     StmStateEmergency->addTransition(&transitionPowerOff, StmStatePowerOff);
