@@ -15,7 +15,7 @@ The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infr
 ## Functions
  * Control speed, direction and functions (F0..F12) of a locomotive (F5..F12 t.b.a and display of functions also).
  
- ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/loccontrol.JPG)
+ ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/loccontrol1.JPG)
  
  * Select a locomotive on one of the 4 loc selection buttons (for now only one loc can be selected).
  
