@@ -43,7 +43,7 @@ And of course put the VCC and GND of the SSD1306 / MAX485 to 5V and TSOP4836 to 
 ## Used library's
 If you want to build the code yourself or update / change the code following library's are required.
  * [Rc5](https://github.com/guyc/RC5) for IR RC5 receive.
- * [StateMachine](https://github.com/MDRRC/StateMachine) State machine Forked from ([jrullan](https://github.com/jrullan/StateMachine)) 
+ * [StateMachine](https://github.com/MDRRC/StateMachine) State machine forked from ([jrullan](https://github.com/jrullan/StateMachine)) 
  * [XpressNet Client Library](http://pgahtow.de/wiki/index.php?title=XpressNet) for XpressNet protocol handling.
  * [Adafruit-SSD1306-Library](https://github.com/adafruit/Adafruit_SSD1306) to control the display.
  * [Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library) for graphic control of the display.
