@@ -1459,18 +1459,22 @@ void setup()
     StmStateGetLocInfo->addTransition(&transitionEmergency, StmStateEmergency);
     StmStateGetLocInfo->addTransition(&transitionShortCircuit, StmStateShortCircuit);
     StmStateGetLocInfo->addTransition(&transitionRc5StopButton, StmStatePowerOff);
+    StmStateGetLocInfo->addTransition(&transitionRc5SelectLocButton, StmStateSelectLoc);
 
     StmStateSelectLoc->addTransition(&transitionPowerOn, StmStateGetLocInfo);
+    StmStateSelectLoc->addTransition(&transitionPowerOff, StmStatePowerOff);
     StmStateSelectLoc->addTransition(&transitionServiceMode, StmStateServiceMode);
     StmStateSelectLoc->addTransition(&transitionEmergency, StmStateEmergency);
     StmStateSelectLoc->addTransition(&transitionShortCircuit, StmStateShortCircuit);
     StmStateSelectLoc->addTransition(&transitionRc5StopButton, StmStatePowerOff);
 
     StmStateTurnOut->addTransition(&transitionServiceMode, StmStateServiceMode);
+    StmStateTurnOut->addTransition(&transitionPowerOff, StmStatePowerOff);
     StmStateTurnOut->addTransition(&transitionEmergency, StmStateEmergency);
     StmStateTurnOut->addTransition(&transitionShortCircuit, StmStateShortCircuit);
     StmStateTurnOut->addTransition(&transitionRc5StopButton, StmStatePowerOff);
     StmStateTurnOut->addTransition(&transitionRc5TurnOutButton, StmStateGetLocInfo);
+    StmStateTurnOut->addTransition(&transitionRc5SelectLocButton, StmStateSelectLoc);
     StmStateTurnOut->addTransition(&transitionTurnOutDirectionShowDisable, StmStateTurnOut);
 }
 
