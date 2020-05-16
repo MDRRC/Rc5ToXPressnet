@@ -60,6 +60,7 @@ static uint16_t LocActualFunctions     = 0;
 static uint8_t LocLastSelected         = 0;
 static uint16_t TurnOutAddress         = 0;
 static uint32_t TurnOutAddressTimeout  = 0;
+static uint32_t TurnOutSymbolTimeOut   = 0;
 static uint8_t FunctionOffset          = 0;
 static uint32_t FunctionOffsetTime     = 0;
 static bool LocInfoChanged             = false;
@@ -138,7 +139,7 @@ const unsigned char turnoutForward[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x00, 0
     0xfc, 0x00, 0x00, 0x3f, 0xf8, 0x00, 0x00, 0xff, 0xf0, 0x00, 0xff, 0xff, 0xff, 0xf0, 0xff, 0xff, 0xff, 0xf0, 0x80,
     0x00, 0x00, 0x10, 0x80, 0x00, 0x00, 0x10, 0x80, 0x00, 0x00, 0x10, 0x80, 0x00, 0x00, 0x10, 0xff, 0xff, 0xff, 0xf0,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00 };
+    0x00, 0x00, 0x00, 0x00, 0x000 };
 
 /**
  * States of the system.
@@ -863,12 +864,35 @@ void StateTurnOut()
                 display.display();
                 Rc5NewData = false;
                 break;
+            case 21:
+                // F1 to set turn out diversing without storing
+                if (TurnOutAddress > 0)
+                {
+                    Rc5NewData       = false;
+                    TurnOutDirection = 0;
+                    SendTurnoutData  = true;
+                }
+                break;
+            case 24:
+                // F4 to set turn out forward without storing
+                if (TurnOutAddress > 0)
+                {
+                    Rc5NewData       = false;
+                    TurnOutDirection = 1;
+                    SendTurnoutData  = true;
+                }
+                break;
             case 40:
                 Rc5NewData       = false;
                 TurnOutDirection = 0;
                 SendTurnoutData  = true;
                 EEPROM.write(EepromTurnoutAddressA, TurnOutAddress >> 8);
                 EEPROM.write(EepromTurnoutAddressA + 1, TurnOutAddress & 0xFF);
+
+                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
+                display.setCursor(110, 0);
+                display.setTextSize(1);
+                display.print("A");
                 break;
             case 41:
                 Rc5NewData       = false;
@@ -876,6 +900,11 @@ void StateTurnOut()
                 SendTurnoutData  = true;
                 EEPROM.write(EepromTurnoutAddressA, TurnOutAddress >> 8);
                 EEPROM.write(EepromTurnoutAddressA + 1, TurnOutAddress & 0xFF);
+
+                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
+                display.setCursor(110, 0);
+                display.setTextSize(1);
+                display.print("A");
                 break;
             case 42:
                 Rc5NewData       = false;
@@ -883,6 +912,11 @@ void StateTurnOut()
                 SendTurnoutData  = true;
                 EEPROM.write(EepromTurnoutAddressB, TurnOutAddress >> 8);
                 EEPROM.write(EepromTurnoutAddressB + 1, TurnOutAddress & 0xFF);
+
+                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
+                display.setCursor(110, 0);
+                display.setTextSize(1);
+                display.print("B");
                 break;
             case 43:
                 Rc5NewData       = false;
@@ -890,6 +924,11 @@ void StateTurnOut()
                 SendTurnoutData  = true;
                 EEPROM.write(EepromTurnoutAddressB, TurnOutAddress >> 8);
                 EEPROM.write(EepromTurnoutAddressB + 1, TurnOutAddress & 0xFF);
+
+                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
+                display.setCursor(110, 0);
+                display.setTextSize(1);
+                display.print("B");
                 break;
             case 44:
                 Rc5NewData       = false;
@@ -897,6 +936,11 @@ void StateTurnOut()
                 SendTurnoutData  = true;
                 EEPROM.write(EepromTurnoutAddressC, TurnOutAddress >> 8);
                 EEPROM.write(EepromTurnoutAddressC + 1, TurnOutAddress & 0xFF);
+
+                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
+                display.setCursor(110, 0);
+                display.setTextSize(1);
+                display.print("C");
                 break;
             case 45:
                 Rc5NewData       = false;
@@ -904,6 +948,11 @@ void StateTurnOut()
                 SendTurnoutData  = true;
                 EEPROM.write(EepromTurnoutAddressC, TurnOutAddress >> 8);
                 EEPROM.write(EepromTurnoutAddressC + 1, TurnOutAddress & 0xFF);
+
+                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
+                display.setCursor(110, 0);
+                display.setTextSize(1);
+                display.print("C");
                 break;
             case 46:
                 Rc5NewData       = false;
@@ -911,6 +960,11 @@ void StateTurnOut()
                 SendTurnoutData  = true;
                 EEPROM.write(EepromTurnoutAddressD, TurnOutAddress >> 8);
                 EEPROM.write(EepromTurnoutAddressD + 1, TurnOutAddress & 0xFF);
+
+                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
+                display.setCursor(110, 0);
+                display.setTextSize(1);
+                display.print("D");
                 break;
             case 47:
                 Rc5NewData       = false;
@@ -918,6 +972,11 @@ void StateTurnOut()
                 SendTurnoutData  = true;
                 EEPROM.write(EepromTurnoutAddressD, TurnOutAddress >> 8);
                 EEPROM.write(EepromTurnoutAddressD + 1, TurnOutAddress & 0xFF);
+
+                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
+                display.setCursor(110, 0);
+                display.setTextSize(1);
+                display.print("D");
                 break;
             default: break;
             }
@@ -925,12 +984,29 @@ void StateTurnOut()
 
         if (SendTurnoutData == true)
         {
+            SendTurnoutData = false;
+
             TurnOutData = 0x08;
             if (TurnOutDirection == 1)
             {
                 TurnOutData |= 1;
             }
             XPNet.setTrntPos((TurnOutAddress - 1) >> 8, (uint8_t)(TurnOutAddress - 1), TurnOutData);
+
+            // Draw turnout symbol
+            display.fillRect(70, 12, 28, 28, SSD1306_BLACK);
+            if (TurnOutDirection == 1)
+            {
+                display.drawBitmap(70, 12, turnoutDiverging, 28, 28, SSD1306_WHITE);
+            }
+            else
+            {
+                display.drawBitmap(70, 12, turnoutForward, 28, 28, SSD1306_WHITE);
+            }
+
+            display.display();
+
+            TurnOutSymbolTimeOut = millis();
         }
     }
 }
@@ -1273,12 +1349,27 @@ bool transitionFunctionOffSetReset()
 
 /***********************************************************************************************************************
  */
-bool transitionTurnOutDirectionShowDisable()
+bool transitionTurnOutDirectionShowDisableStatusRow()
 {
     if ((millis() - TurnOutAddressTimeout) > 1500)
     {
         TurnOutAddressTimeout = millis();
         display.fillRect(25, 0, 30, 8, SSD1306_BLACK);
+        display.display();
+    }
+
+    return (false);
+}
+
+/***********************************************************************************************************************
+ */
+bool transitionTurnOutDirectionShowDisable()
+{
+    if ((millis() - TurnOutSymbolTimeOut) > 1000)
+    {
+        TurnOutSymbolTimeOut = millis();
+        display.fillRect(70, 12, 28, 28, SSD1306_BLACK);
+        display.drawBitmap(70, 12, turnout, 28, 28, SSD1306_WHITE);
         display.display();
     }
 
@@ -1343,7 +1434,7 @@ void setup()
     StmStatePowerOn->addTransition(&transitionRc5SelectLocButton, StmStateSelectLoc);
     StmStatePowerOn->addTransition(&transitionRc5TurnOutButton, StmStateTurnOut);
     StmStatePowerOn->addTransition(&transitionFunctionOffSetReset, StmStatePowerOn);
-    StmStatePowerOn->addTransition(&transitionTurnOutDirectionShowDisable, StmStatePowerOn);
+    StmStatePowerOn->addTransition(&transitionTurnOutDirectionShowDisableStatusRow, StmStatePowerOn);
 
     StmStateEmergency->addTransition(&transitionPowerOn, StmStateGetLocInfo);
     StmStateEmergency->addTransition(&transitionPowerOff, StmStatePowerOff);
@@ -1380,6 +1471,7 @@ void setup()
     StmStateTurnOut->addTransition(&transitionShortCircuit, StmStateShortCircuit);
     StmStateTurnOut->addTransition(&transitionRc5StopButton, StmStatePowerOff);
     StmStateTurnOut->addTransition(&transitionRc5TurnOutButton, StmStateGetLocInfo);
+    StmStateTurnOut->addTransition(&transitionTurnOutDirectionShowDisable, StmStateTurnOut);
 }
 
 /**
