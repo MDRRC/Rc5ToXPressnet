@@ -4,7 +4,7 @@ The Rc5 to XpressNet convertor is an interface between an RC5 remote control and
 
 It is based on: 
 
- * An Ardiuno Mega 2560 Mini
+ * An Ardiuno Mega 2560 PRO Embed 
  * An [Arduino Mega 2560](https://store.arduino.cc/arduino-mega-2560-rev3) will also work but the board is way bigger. 
  * MAX485 RS485 driver IC.
  * 128*64 pixels OLED SSD1306 I2C display. 
@@ -28,6 +28,8 @@ The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infr
  * [Roco MultiMaus as master](https://www.roco.cc/en/product/5215-multimaus-0-0-0-0-0-004001-0/products.html). Only a quick test, needs more extensive testing...
  
 ## Connections
+
+Below table with connections and here ![pdf of schematic](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/rx5xpressnetschematic.pdf)
 
 | Ardiuno Mega  | Device         |
 | ------------  | -------------- |
