@@ -58,6 +58,7 @@ static uint8_t LocActualSpeed          = 0;
 static uint8_t LocActualDirection      = 0;
 static uint16_t LocActualFunctions     = 0;
 static uint8_t LocLastSelected         = 0;
+static uint32_t LocUpdateTimeOut       = 0;
 static uint16_t TurnOutAddress         = 0;
 static uint32_t TurnOutAddressTimeout  = 0;
 static uint32_t TurnOutSymbolTimeOut   = 0;
@@ -275,6 +276,7 @@ void ShowLocInfo()
     case 1: display.print("B"); break;
     case 2: display.print("C"); break;
     case 3: display.print("D"); break;
+    default: display.print(" "); break;
     }
 
     // Show decoder speed steps
@@ -346,6 +348,56 @@ void SendTurnOutCommand(uint8_t EepromAddress, uint8_t Direction)
         }
         TurnOutAddressTimeout = millis();
         display.display();
+    }
+}
+
+/***********************************************************************************************************************
+ */
+void TurnOutStoreAndUpdateIndication(int EepromAddress, uint16_t Address, const char* StrPtr)
+{
+    EEPROM.write(EepromAddress, Address >> 8);
+    EEPROM.write(EepromAddress + 1, Address & 0xFF);
+
+    display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
+    display.setCursor(110, 0);
+    display.setTextSize(1);
+    display.print(StrPtr);
+}
+
+/***********************************************************************************************************************
+ */
+uint16_t LocToggleFunction(uint16_t Address, uint16_t Function, uint8_t Offset)
+{
+    LocActualFunctions ^= (1 << (Function + Offset));
+    XPNet.setLocoFunc(
+        Address >> 8, Address & 0xFF, (LocActualFunctions >> (Function + Offset)) & 0x01, (Function + Offset));
+
+    LocUpdateTimeOut   = millis();
+    FunctionOffsetTime = millis();
+
+    return (LocActualFunctions);
+}
+
+/***********************************************************************************************************************
+ */
+void LocSelectButtonAToD(int EepromAddress, uint8_t lastselected)
+{
+    uint16_t LocAddress;
+
+    // Get loc address
+    LocAddress = ((uint16_t)(EEPROM.read(EepromAddress)) << 8);
+    LocAddress |= (uint16_t)EEPROM.read(EepromAddress + 1);
+
+    if (lastselected != LocLastSelected)
+    {
+        if (LocAddress < 9999)
+        {
+            locInfoRefresh  = true;
+            locInfo.Address = LocAddress;
+            LocLastSelected = lastselected;
+            EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
+            Stm.transitionTo(StmStateGetLocInfo);
+        }
     }
 }
 
@@ -468,7 +520,7 @@ void StatePowerOff()
 void StatePowerOn()
 {
     bool TransmitSpeedDirectionData = false;
-    uint16_t LocAddress             = 0;
+
     if (Stm.executeOnce)
     {
         locInfoRefresh = false;
@@ -516,52 +568,24 @@ void StatePowerOn()
                 }
                 break;
             case 19:
-                // off (light) button
+                // Off (light) button
                 LocActualFunctions &= ~(1 << 0);
                 XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF, LocActualFunctions & 0x01, 0);
-                Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
+                Rc5NewData       = false;
+                LocUpdateTimeOut = millis();
                 break;
             case 20:
-                // F0 (Light) button on
-                LocActualFunctions |= 1;
-                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF, LocActualFunctions & 0x01, 0);
-                Rc5NewData = false;
-                ShowFPlusRemove();
-                FunctionOffset = 0;
+                // F0 (Light) button
+                LocActualFunctions = LocToggleFunction(locInfo.Address, 0, 0);
+                Rc5NewData         = false;
                 break;
             case 21:
-                // F1 button toggle function
-                LocActualFunctions ^= (1 << (1 + FunctionOffset));
-                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF,
-                    (LocActualFunctions >> (1 + FunctionOffset)) & 0x01, (1 + FunctionOffset));
-                Rc5NewData         = false;
-                FunctionOffsetTime = millis();
-                break;
             case 22:
-                // F2 button toggle function
-                LocActualFunctions ^= (1 << (2 + FunctionOffset));
-                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF,
-                    (LocActualFunctions >> (2 + FunctionOffset)) & 0x01, (2 + FunctionOffset));
-                Rc5NewData         = false;
-                FunctionOffsetTime = millis();
-                break;
             case 23:
-                // F3 button toggle function
-                LocActualFunctions ^= (1 << (3 + FunctionOffset));
-                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF,
-                    (LocActualFunctions >> (3 + FunctionOffset)) & 0x01, (3 + FunctionOffset));
-                Rc5NewData         = false;
-                FunctionOffsetTime = millis();
-                break;
             case 24:
-                // F4 button toggle function
-                LocActualFunctions ^= (1 << (4 + FunctionOffset));
-                XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF,
-                    (LocActualFunctions >> (4 + FunctionOffset)) & 0x01, (4 + FunctionOffset));
+                // F1 .. F4 button toggle function
+                LocActualFunctions = LocToggleFunction(locInfo.Address, Rc5Command - 20, FunctionOffset);
                 Rc5NewData         = false;
-                FunctionOffsetTime = millis();
                 break;
             case 29:
                 // F+4 button
@@ -674,79 +698,32 @@ void StatePowerOn()
                 Rc5NewData = false;
                 break;
             case 51:
-                // A button to select loc
-                LocAddress = ((uint16_t)(EEPROM.read(EepromLocAddressA)) << 8);
-                LocAddress |= (uint16_t)EEPROM.read(EepromLocAddressA + 1);
-
-                if (LocLastSelected != 0)
-                {
-                    if (LocAddress < 9999)
-                    {
-                        locInfoRefresh  = true;
-                        locInfo.Address = LocAddress;
-                        LocLastSelected = 0;
-                        EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
-                        Stm.transitionTo(StmStateGetLocInfo);
-                    }
-                }
+                LocSelectButtonAToD(EepromLocAddressA, 0);
+                Rc5NewData = false;
                 break;
             case 52:
                 // B Button to select loc
-                LocAddress = ((uint16_t)(EEPROM.read(EepromLocAddressB)) << 8);
-                LocAddress |= (uint16_t)EEPROM.read(EepromLocAddressB + 1);
-
-                if (LocLastSelected != 1)
-                {
-                    if (LocAddress < 9999)
-                    {
-                        locInfoRefresh  = true;
-                        locInfo.Address = LocAddress;
-                        LocLastSelected = 1;
-                        EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
-                        Stm.transitionTo(StmStateGetLocInfo);
-                    }
-                }
+                LocSelectButtonAToD(EepromLocAddressB, 1);
+                Rc5NewData = false;
                 break;
             case 53:
                 // C Button to select loc
-                LocAddress = ((uint16_t)(EEPROM.read(EepromLocAddressC)) << 8);
-                LocAddress |= (uint16_t)EEPROM.read(EepromLocAddressC + 1);
-
-                if (LocLastSelected != 2)
-                {
-                    if (LocAddress < 9999)
-                    {
-                        locInfoRefresh  = true;
-                        locInfo.Address = LocAddress;
-                        LocLastSelected = 2;
-                        EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
-                        Stm.transitionTo(StmStateGetLocInfo);
-                    }
-                }
+                LocSelectButtonAToD(EepromLocAddressC, 2);
+                Rc5NewData = false;
                 break;
             case 54:
                 // D Button to select loc
-                LocAddress = ((uint16_t)(EEPROM.read(EepromLocAddressD)) << 8);
-                LocAddress |= (uint16_t)EEPROM.read(EepromLocAddressD + 1);
-
-                if (LocLastSelected != 3)
-                {
-                    if (LocAddress < 9999)
-                    {
-                        locInfoRefresh  = true;
-                        locInfo.Address = LocAddress;
-                        LocLastSelected = 3;
-                        EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
-                        Stm.transitionTo(StmStateGetLocInfo);
-                    }
-                }
+                LocSelectButtonAToD(EepromLocAddressD, 3);
+                Rc5NewData = false;
                 break;
             default: break;
             }
 
             if (TransmitSpeedDirectionData == true)
             {
-                Rc5NewData = false;
+                LocUpdateTimeOut = millis();
+                Rc5NewData       = false;
+
                 switch (locInfo.Steps)
                 {
                 case 1:
@@ -883,100 +860,52 @@ void StateTurnOut()
                 }
                 break;
             case 40:
+                TurnOutStoreAndUpdateIndication(EepromTurnoutAddressA, TurnOutAddress, "A");
                 Rc5NewData       = false;
-                TurnOutDirection = 0;
                 SendTurnoutData  = true;
-                EEPROM.write(EepromTurnoutAddressA, TurnOutAddress >> 8);
-                EEPROM.write(EepromTurnoutAddressA + 1, TurnOutAddress & 0xFF);
-
-                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
-                display.setCursor(110, 0);
-                display.setTextSize(1);
-                display.print("A");
+                TurnOutDirection = 0;
                 break;
             case 41:
+                TurnOutStoreAndUpdateIndication(EepromTurnoutAddressA, TurnOutAddress, "A");
                 Rc5NewData       = false;
-                TurnOutDirection = 1;
                 SendTurnoutData  = true;
-                EEPROM.write(EepromTurnoutAddressA, TurnOutAddress >> 8);
-                EEPROM.write(EepromTurnoutAddressA + 1, TurnOutAddress & 0xFF);
-
-                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
-                display.setCursor(110, 0);
-                display.setTextSize(1);
-                display.print("A");
+                TurnOutDirection = 0;
                 break;
             case 42:
+                TurnOutStoreAndUpdateIndication(EepromTurnoutAddressB, TurnOutAddress, "B");
                 Rc5NewData       = false;
-                TurnOutDirection = 0;
                 SendTurnoutData  = true;
-                EEPROM.write(EepromTurnoutAddressB, TurnOutAddress >> 8);
-                EEPROM.write(EepromTurnoutAddressB + 1, TurnOutAddress & 0xFF);
-
-                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
-                display.setCursor(110, 0);
-                display.setTextSize(1);
-                display.print("B");
+                TurnOutDirection = 0;
                 break;
             case 43:
+                TurnOutStoreAndUpdateIndication(EepromTurnoutAddressB, TurnOutAddress, "B");
                 Rc5NewData       = false;
-                TurnOutDirection = 1;
                 SendTurnoutData  = true;
-                EEPROM.write(EepromTurnoutAddressB, TurnOutAddress >> 8);
-                EEPROM.write(EepromTurnoutAddressB + 1, TurnOutAddress & 0xFF);
-
-                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
-                display.setCursor(110, 0);
-                display.setTextSize(1);
-                display.print("B");
+                TurnOutDirection = 0;
                 break;
             case 44:
+                TurnOutStoreAndUpdateIndication(EepromTurnoutAddressC, TurnOutAddress, "C");
                 Rc5NewData       = false;
-                TurnOutDirection = 0;
                 SendTurnoutData  = true;
-                EEPROM.write(EepromTurnoutAddressC, TurnOutAddress >> 8);
-                EEPROM.write(EepromTurnoutAddressC + 1, TurnOutAddress & 0xFF);
-
-                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
-                display.setCursor(110, 0);
-                display.setTextSize(1);
-                display.print("C");
+                TurnOutDirection = 0;
                 break;
             case 45:
+                TurnOutStoreAndUpdateIndication(EepromTurnoutAddressC, TurnOutAddress, "C");
                 Rc5NewData       = false;
-                TurnOutDirection = 1;
                 SendTurnoutData  = true;
-                EEPROM.write(EepromTurnoutAddressC, TurnOutAddress >> 8);
-                EEPROM.write(EepromTurnoutAddressC + 1, TurnOutAddress & 0xFF);
-
-                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
-                display.setCursor(110, 0);
-                display.setTextSize(1);
-                display.print("C");
+                TurnOutDirection = 0;
                 break;
             case 46:
+                TurnOutStoreAndUpdateIndication(EepromTurnoutAddressD, TurnOutAddress, "D");
                 Rc5NewData       = false;
-                TurnOutDirection = 0;
                 SendTurnoutData  = true;
-                EEPROM.write(EepromTurnoutAddressD, TurnOutAddress >> 8);
-                EEPROM.write(EepromTurnoutAddressD + 1, TurnOutAddress & 0xFF);
-
-                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
-                display.setCursor(110, 0);
-                display.setTextSize(1);
-                display.print("D");
+                TurnOutDirection = 0;
                 break;
             case 47:
+                TurnOutStoreAndUpdateIndication(EepromTurnoutAddressD, TurnOutAddress, "D");
                 Rc5NewData       = false;
-                TurnOutDirection = 1;
                 SendTurnoutData  = true;
-                EEPROM.write(EepromTurnoutAddressD, TurnOutAddress >> 8);
-                EEPROM.write(EepromTurnoutAddressD + 1, TurnOutAddress & 0xFF);
-
-                display.fillRect(110, 0, 10, 8, SSD1306_BLACK);
-                display.setCursor(110, 0);
-                display.setTextSize(1);
-                display.print("D");
+                TurnOutDirection = 0;
                 break;
             default: break;
             }
@@ -1474,7 +1403,7 @@ void setup()
     StmStateTurnOut->addTransition(&transitionShortCircuit, StmStateShortCircuit);
     StmStateTurnOut->addTransition(&transitionRc5StopButton, StmStatePowerOff);
     StmStateTurnOut->addTransition(&transitionRc5TurnOutButton, StmStateGetLocInfo);
-    StmStateTurnOut->addTransition(&transitionRc5SelectLocButton, StmStateSelectLoc);
+    StmStateTurnOut->addTransition(&transitionRc5SelectLocButton, StmStateGetLocInfo);
     StmStateTurnOut->addTransition(&transitionTurnOutDirectionShowDisable, StmStateTurnOut);
 }
 
