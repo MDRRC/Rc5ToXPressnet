@@ -42,7 +42,7 @@ Below table with connections and here ![pdf of schematic](https://github.com/MDR
 
 And of course put the VCC and GND of the SSD1306 / MAX485 to 5V and TSOP4836 to 3V3 of the Arduino Mega 2560 board. 
 
-Below the PCB. The display and RC% receiver are mounted on the solder side!
+Below the PCB. The display and TSOP4836 IR receiver are mounted on the solder side!
 
 ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/pcb_comp_side.JPG)
 
