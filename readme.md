@@ -42,9 +42,11 @@ Below table with connections and here ![pdf of schematic](https://github.com/MDR
 
 And of course put the VCC and GND of the SSD1306 / MAX485 to 5V and TSOP4836 to 3V3 of the Arduino Mega 2560 board. 
 
-A PCB is created, as soon the real one is in house it will be build and tested
+Below the PCB. The display and RC% receiver are mounted on the solder side!
 
-![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/pcb.JPG)
+![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/pcb_comp_side.JPG)
+
+![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/pcb_solder_side.JPG)
 
 ## Used library's
 If you want to build the code yourself or update / change the code following library's are required.
