@@ -40,13 +40,15 @@ Below table with connections and here ![pdf of schematic](https://github.com/MDR
 | TXD1 18       | MAX485 pin 4   |
 | IO   22       | MAX485 pin 2/3 |
 
-And of course put the VCC and GND of the SSD1306 / MAX485 to 5V and TSOP4836 to 3V3 of the Arduino Mega 2560 board. 
+And of course put the VCC and GND of the SSD1306 / MAX485 / TSOP4836 to 3V3 of the Arduino Mega 2560 board (5V is also OK).
 
 Below the PCB. The display and TSOP4836 IR receiver are mounted on the solder side!
 
 ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/pcb_comp_side.JPG)
 
 ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/pcb_solder_side.JPG)
+
+If your are interested in a PCB sent me a mail, PCB cost 3.50 Euro exclusing post and package.
 
 ## Used library's
 If you want to build the code yourself or update / change the code following library's are required.
