@@ -44,28 +44,31 @@ static XpressNetClass XPNet;
 static StateMachine Stm = StateMachine();
 static LocInfo locInfo;
 static LocInfo locInfoPrevious;
-static uint8_t Rc5Toggle               = 0;
-static uint8_t Rc5TogglePrevious       = 0xFF;
-static uint8_t Rc5Address              = 0;
-static uint8_t Rc5Command              = 0;
-static bool Rc5NewData                 = false;
-static bool PowerOnStart               = true;
-static uint32_t previousMillis         = 0;
-static byte XpressNetPowerStat         = 0xFF;
-static byte XpressNetPowerStatPrevious = 0xFF;
-static uint16_t LocAddressSelect       = 0;
-static uint8_t LocActualSpeed          = 0;
-static uint8_t LocActualDirection      = 0;
-static uint16_t LocActualFunctions     = 0;
-static uint8_t LocLastSelected         = 0;
-static uint32_t LocUpdateTimeOut       = 0;
-static uint16_t TurnOutAddress         = 0;
-static uint32_t TurnOutAddressTimeout  = 0;
-static uint32_t TurnOutSymbolTimeOut   = 0;
-static uint8_t FunctionOffset          = 0;
-static uint32_t FunctionOffsetTime     = 0;
-static bool LocInfoChanged             = false;
-static bool locInfoRefresh             = false;
+static uint8_t Rc5Toggle                 = 0;
+static uint8_t Rc5TogglePrevious         = 0xFF;
+static uint8_t Rc5Address                = 0;
+static uint8_t Rc5Command                = 0;
+static bool Rc5NewData                   = false;
+static bool PowerOnStart                 = true;
+static uint32_t previousMillis           = 0;
+static byte XpressNetPowerStat           = 0xFF;
+static byte XpressNetPowerStatPrevious   = 0xFF;
+static uint16_t LocAddressSelect         = 0;
+static uint8_t LocActualSpeed            = 0;
+static uint8_t LocActualDirection        = 0;
+static uint16_t LocActualFunctions       = 0;
+static uint8_t LocLastSelected           = 0;
+static uint32_t LocUpdateTimeOut         = 0;
+static uint16_t TurnOutAddress           = 0;
+static uint32_t TurnOutAddressTimeout    = 0;
+static uint32_t TurnOutSymbolTimeOut     = 0;
+static uint8_t FunctionOffset            = 0;
+static uint32_t FunctionOffsetTime       = 0;
+static bool LocInfoChanged               = false;
+static bool locInfoRefresh               = false;
+static uint16_t LocTurnOutAddressDefault = 3;
+static uint16_t LocTurnoutAddressMax     = 9999;
+static uint16_t LocTurnoutAddressMin     = 0;
 
 int EepromLocAddressA            = 0;
 int EepromLocAddressB            = 0x02;
@@ -76,6 +79,47 @@ int EepromTurnoutAddressA        = 0x10;
 int EepromTurnoutAddressB        = 0x12;
 int EepromTurnoutAddressC        = 0x14;
 int EepromTurnoutAddressD        = 0x16;
+
+/**
+ * Button definitions.
+ */
+static const uint8_t Rc5Button_1                  = 1;
+static const uint8_t Rc5Button_2                  = 2;
+static const uint8_t Rc5Button_3                  = 3;
+static const uint8_t Rc5Button_4                  = 4;
+static const uint8_t Rc5Button_5                  = 5;
+static const uint8_t Rc5Button_6                  = 6;
+static const uint8_t Rc5Button_7                  = 7;
+static const uint8_t Rc5Button_8                  = 8;
+static const uint8_t Rc5Button_9                  = 9;
+static const uint8_t Rc5Button_0                  = 0;
+static const uint8_t Rc5Button_OnOff              = 12;
+static const uint8_t Rc5Button_Loc                = 13;
+static const uint8_t Rc5Button_TurnOutSingle      = 14;
+static const uint8_t Rc5Button_Right              = 16;
+static const uint8_t Rc5Button_Left               = 17;
+static const uint8_t Rc5Button_LightOff           = 19;
+static const uint8_t Rc5Button_F0                 = 20;
+static const uint8_t Rc5Button_F1                 = 21;
+static const uint8_t Rc5Button_F2                 = 22;
+static const uint8_t Rc5Button_F3                 = 23;
+static const uint8_t Rc5Button_F4                 = 24;
+static const uint8_t Rc5Button_FPlus4             = 29;
+static const uint8_t Rc5Button_FPlus8             = 30;
+static const uint8_t Rc5Button_Plus               = 32;
+static const uint8_t Rc5Button_Minus              = 33;
+static const uint8_t Rc5Button_TurnOutDiversing_1 = 40;
+static const uint8_t Rc5Button_TurnoutForward_1   = 41;
+static const uint8_t Rc5Button_TurnOutDiversing_2 = 42;
+static const uint8_t Rc5Button_TurnoutForward_2   = 43;
+static const uint8_t Rc5Button_TurnOutDiversing_3 = 44;
+static const uint8_t Rc5Button_TurnoutForward_3   = 45;
+static const uint8_t Rc5Button_TurnOutDiversing_4 = 46;
+static const uint8_t Rc5Button_TurnoutForward_4   = 47;
+static const uint8_t Rc5Button_A                  = 51;
+static const uint8_t Rc5Button_B                  = 52;
+static const uint8_t Rc5Button_C                  = 53;
+static const uint8_t Rc5Button_D                  = 54;
 
 /**
  * Forward direction loc symbol, see for conversion of an image https://diyusthad.com/image2cpp .
@@ -322,13 +366,24 @@ void ShowLocInfo()
 
 /***********************************************************************************************************************
  */
+void ShowSelectecLocInStatusRow(const char* strPr)
+{
+    display.fillRect(100, 0, 9, 8, SSD1306_BLACK);
+    display.setCursor(100, 0);
+    display.setTextSize(0);
+    display.print(strPr);
+    display.display();
+}
+
+/***********************************************************************************************************************
+ */
 void SendTurnOutCommand(uint8_t EepromAddress, uint8_t Direction)
 {
     uint8_t TurnOutData = 0x08;
     TurnOutAddress      = ((uint16_t)(EEPROM.read(EepromAddress)) << 8);
     TurnOutAddress |= (uint16_t)(EEPROM.read(EepromAddress + 1));
 
-    if (TurnOutAddress <= 9999)
+    if (TurnOutAddress <= LocTurnoutAddressMax)
     {
         TurnOutData |= Direction;
         XPNet.setTrntPos((TurnOutAddress - 1) >> 8, (uint8_t)(TurnOutAddress - 1), TurnOutData);
@@ -349,6 +404,16 @@ void SendTurnOutCommand(uint8_t EepromAddress, uint8_t Direction)
         TurnOutAddressTimeout = millis();
         display.display();
     }
+}
+
+/***********************************************************************************************************************
+ */
+void LocStore(int EepromAddress, uint16_t Address, uint8_t LastSelected)
+{
+    EEPROM.write(EepromAddress, Address >> 8);
+    EEPROM.write(EepromAddress + 1, Address & 0xFF);
+
+    EEPROM.write(EepromLocAddressLastSelected, LastSelected);
 }
 
 /***********************************************************************************************************************
@@ -390,7 +455,7 @@ void LocSelectButtonAToD(int EepromAddress, uint8_t lastselected)
 
     if (lastselected != LocLastSelected)
     {
-        if (LocAddress < 9999)
+        if (LocAddress < LocTurnoutAddressMax)
         {
             locInfoRefresh  = true;
             locInfo.Address = LocAddress;
@@ -430,7 +495,7 @@ void StateInit()
             break;
         default:
             // Probably no selection done yet, set 3 and A as default.
-            locInfo.Address = 3;
+            locInfo.Address = LocTurnOutAddressDefault;
             LocLastSelected = 0;
             EEPROM.write(EepromLocAddressA, locInfo.Address >> 8);
             EEPROM.write(EepromLocAddressA + 1, locInfo.Address & 0xFF);
@@ -438,9 +503,9 @@ void StateInit()
             break;
         }
 
-        if (locInfo.Address > 9999)
+        if (locInfo.Address > LocTurnoutAddressMax)
         {
-            locInfo.Address = 3;
+            locInfo.Address = LocTurnOutAddressDefault;
         }
         XPNet.getLocoInfo(locInfo.Address >> 8, locInfo.Address & 0xFF);
     }
@@ -541,17 +606,17 @@ void StatePowerOn()
         {
             switch (Rc5Command)
             {
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-            case 6:
-            case 7:
-            case 8:
-            case 9: Rc5NewData = false; break;
-            case 16:
+            case Rc5Button_0:
+            case Rc5Button_1:
+            case Rc5Button_2:
+            case Rc5Button_3:
+            case Rc5Button_4:
+            case Rc5Button_5:
+            case Rc5Button_6:
+            case Rc5Button_7:
+            case Rc5Button_8:
+            case Rc5Button_9: Rc5NewData = false; break;
+            case Rc5Button_Right:
                 // Right button
                 TransmitSpeedDirectionData = true;
                 if (LocActualDirection == 0x0)
@@ -559,7 +624,7 @@ void StatePowerOn()
                     LocActualDirection = 0x80;
                 }
                 break;
-            case 17:
+            case Rc5Button_Left:
                 // Left button
                 TransmitSpeedDirectionData = true;
                 if (LocActualDirection == 0x80)
@@ -567,27 +632,27 @@ void StatePowerOn()
                     LocActualDirection = 0x0;
                 }
                 break;
-            case 19:
+            case Rc5Button_LightOff:
                 // Off (light) button
                 LocActualFunctions &= ~(1 << 0);
                 XPNet.setLocoFunc(locInfo.Address >> 8, locInfo.Address & 0xFF, LocActualFunctions & 0x01, 0);
                 Rc5NewData       = false;
                 LocUpdateTimeOut = millis();
                 break;
-            case 20:
+            case Rc5Button_F0:
                 // F0 (Light) button
                 LocActualFunctions = LocToggleFunction(locInfo.Address, 0, 0);
                 Rc5NewData         = false;
                 break;
-            case 21:
-            case 22:
-            case 23:
-            case 24:
+            case Rc5Button_F1:
+            case Rc5Button_F2:
+            case Rc5Button_F3:
+            case Rc5Button_F4:
                 // F1 .. F4 button toggle function
                 LocActualFunctions = LocToggleFunction(locInfo.Address, Rc5Command - 20, FunctionOffset);
                 Rc5NewData         = false;
                 break;
-            case 29:
+            case Rc5Button_FPlus4:
                 // F+4 button
                 Rc5NewData = false;
                 if ((FunctionOffset == 0) || (FunctionOffset == 8))
@@ -602,7 +667,7 @@ void StatePowerOn()
                     FunctionOffset = 0;
                 }
                 break;
-            case 30:
+            case Rc5Button_FPlus8:
                 // F+8 button
                 Rc5NewData = false;
                 if ((FunctionOffset == 0) || (FunctionOffset == 4))
@@ -617,7 +682,7 @@ void StatePowerOn()
                     FunctionOffset = 0;
                 }
                 break;
-            case 32:
+            case Rc5Button_Plus:
                 // + button
                 TransmitSpeedDirectionData = true;
                 if (LocActualDirection == 0x80)
@@ -637,7 +702,7 @@ void StatePowerOn()
                     }
                 }
                 break;
-            case 33:
+            case Rc5Button_Minus:
                 // - button
                 TransmitSpeedDirectionData = true;
                 if (LocActualDirection == 0x80)
@@ -657,61 +722,61 @@ void StatePowerOn()
                     LocActualSpeed++;
                 }
                 break;
-            case 40:
+            case Rc5Button_TurnOutDiversing_1:
                 // Turnout A red.
                 SendTurnOutCommand(EepromTurnoutAddressA, 0);
                 Rc5NewData = false;
                 break;
-            case 41:
+            case Rc5Button_TurnoutForward_1:
                 // Turnout A green.
                 SendTurnOutCommand(EepromTurnoutAddressA, 1);
                 Rc5NewData = false;
                 break;
-            case 42:
+            case Rc5Button_TurnOutDiversing_2:
                 // Turnout B red.
                 SendTurnOutCommand(EepromTurnoutAddressB, 0);
                 Rc5NewData = false;
                 break;
-            case 43:
+            case Rc5Button_TurnoutForward_2:
                 // Turnout B green.
                 SendTurnOutCommand(EepromTurnoutAddressB, 1);
                 Rc5NewData = false;
                 break;
-            case 44:
+            case Rc5Button_TurnOutDiversing_3:
                 // Turnout C red.
                 SendTurnOutCommand(EepromTurnoutAddressC, 0);
                 Rc5NewData = false;
                 break;
-            case 45:
+            case Rc5Button_TurnoutForward_3:
                 // Turnout C green.
                 SendTurnOutCommand(EepromTurnoutAddressC, 1);
                 Rc5NewData = false;
                 break;
-            case 46:
+            case Rc5Button_TurnOutDiversing_4:
                 // Turnout D red.
                 SendTurnOutCommand(EepromTurnoutAddressD, 0);
                 Rc5NewData = false;
                 break;
-            case 47:
+            case Rc5Button_TurnoutForward_4:
                 // Turnout D green.
                 SendTurnOutCommand(EepromTurnoutAddressD, 1);
                 Rc5NewData = false;
                 break;
-            case 51:
+            case Rc5Button_A:
                 LocSelectButtonAToD(EepromLocAddressA, 0);
                 Rc5NewData = false;
                 break;
-            case 52:
+            case Rc5Button_B:
                 // B Button to select loc
                 LocSelectButtonAToD(EepromLocAddressB, 1);
                 Rc5NewData = false;
                 break;
-            case 53:
+            case Rc5Button_C:
                 // C Button to select loc
                 LocSelectButtonAToD(EepromLocAddressC, 2);
                 Rc5NewData = false;
                 break;
-            case 54:
+            case Rc5Button_D:
                 // D Button to select loc
                 LocSelectButtonAToD(EepromLocAddressD, 3);
                 Rc5NewData = false;
@@ -761,16 +826,6 @@ void StatePowerOn()
 
                 ShowFPlusRemove();
                 FunctionOffset = 0;
-
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-                Serial.print("Speed : ");
-                Serial.print(LocActualSpeed);
-                Serial.print("Direction : ");
-                Serial.print(LocActualDirection);
-                Serial.print("Steps : ");
-                Serial.print(locInfo.Steps);
-                Serial.println("");
-#endif
             }
         }
     }
@@ -803,22 +858,22 @@ void StateTurnOut()
         {
             switch (Rc5Command)
             {
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-            case 6:
-            case 7:
-            case 8:
-            case 9:
+            case Rc5Button_0:
+            case Rc5Button_1:
+            case Rc5Button_2:
+            case Rc5Button_3:
+            case Rc5Button_4:
+            case Rc5Button_5:
+            case Rc5Button_6:
+            case Rc5Button_7:
+            case Rc5Button_8:
+            case Rc5Button_9:
                 TurnOutAddress *= 10;
                 TurnOutAddress += (uint16_t)(Rc5Command);
 
-                if (TurnOutAddress > 9999)
+                if (TurnOutAddress > LocTurnoutAddressMax)
                 {
-                    TurnOutAddress = 0;
+                    TurnOutAddress = LocTurnoutAddressMin;
                 }
 
                 // Show address.
@@ -829,7 +884,7 @@ void StateTurnOut()
                 display.display();
                 Rc5NewData = false;
                 break;
-            case 20:
+            case Rc5Button_F0:
                 // Use F0 button to reset address.
                 TurnOutAddress = 0;
 
@@ -841,7 +896,7 @@ void StateTurnOut()
                 display.display();
                 Rc5NewData = false;
                 break;
-            case 21:
+            case Rc5Button_F1:
                 // F1 to set turn out diversing without storing
                 if (TurnOutAddress > 0)
                 {
@@ -850,7 +905,7 @@ void StateTurnOut()
                     SendTurnoutData  = true;
                 }
                 break;
-            case 24:
+            case Rc5Button_F4:
                 // F4 to set turn out forward without storing
                 if (TurnOutAddress > 0)
                 {
@@ -859,49 +914,57 @@ void StateTurnOut()
                     SendTurnoutData  = true;
                 }
                 break;
-            case 40:
+            case Rc5Button_TurnOutDiversing_1:
+                // Red button above A, store turnout address
                 TurnOutStoreAndUpdateIndication(EepromTurnoutAddressA, TurnOutAddress, "A");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
                 TurnOutDirection = 0;
                 break;
-            case 41:
+            case Rc5Button_TurnoutForward_1:
+                // Green button above A, store turnout address
                 TurnOutStoreAndUpdateIndication(EepromTurnoutAddressA, TurnOutAddress, "A");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
                 TurnOutDirection = 0;
                 break;
-            case 42:
+            case Rc5Button_TurnOutDiversing_2:
+                // Red button above B, store turnout address
                 TurnOutStoreAndUpdateIndication(EepromTurnoutAddressB, TurnOutAddress, "B");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
                 TurnOutDirection = 0;
                 break;
-            case 43:
-                TurnOutStoreAndUpdateIndication(EepromTurnoutAddressB, TurnOutAddress, "B");
+            case Rc5Button_TurnoutForward_2:
+                // Green button above B, store turnout address
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
                 TurnOutDirection = 0;
                 break;
-            case 44:
+            case Rc5Button_TurnOutDiversing_3:
+                // Red button above C, store turnout address
                 TurnOutStoreAndUpdateIndication(EepromTurnoutAddressC, TurnOutAddress, "C");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
                 TurnOutDirection = 0;
                 break;
-            case 45:
+            case Rc5Button_TurnoutForward_3:
+                // Green button above C, store turnout address
                 TurnOutStoreAndUpdateIndication(EepromTurnoutAddressC, TurnOutAddress, "C");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
                 TurnOutDirection = 0;
                 break;
-            case 46:
+            case Rc5Button_TurnOutDiversing_4:
+                // Red button above D, store turnout address
+
                 TurnOutStoreAndUpdateIndication(EepromTurnoutAddressD, TurnOutAddress, "D");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
                 TurnOutDirection = 0;
                 break;
-            case 47:
+            case Rc5Button_TurnoutForward_4:
+                // Green button above D, store turnout address
                 TurnOutStoreAndUpdateIndication(EepromTurnoutAddressD, TurnOutAddress, "D");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
@@ -997,24 +1060,24 @@ void StateSelectLoc()
         {
             switch (Rc5Command)
             {
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-            case 6:
-            case 7:
-            case 8:
-            case 9:
+            case Rc5Button_0:
+            case Rc5Button_1:
+            case Rc5Button_2:
+            case Rc5Button_3:
+            case Rc5Button_4:
+            case Rc5Button_5:
+            case Rc5Button_6:
+            case Rc5Button_7:
+            case Rc5Button_8:
+            case Rc5Button_9:
                 // Increase selected address.
                 LocAddressSelect *= 10;
                 LocAddressSelect += (uint16_t)(Rc5Command);
 
                 // Limit
-                if (LocAddressSelect > 9999)
+                if (LocAddressSelect > LocTurnoutAddressMax)
                 {
-                    LocAddressSelect = 0;
+                    LocAddressSelect = LocTurnoutAddressMin;
                 }
 
                 // Display
@@ -1026,7 +1089,7 @@ void StateSelectLoc()
 
                 Rc5NewData = false;
                 break;
-            case 13:
+            case Rc5Button_Loc:
                 // Loc button to exit.
                 Rc5NewData = false;
                 if (LocAddressSelect > 0)
@@ -1035,7 +1098,7 @@ void StateSelectLoc()
                 }
                 Stm.transitionTo(StmStateGetLocInfo);
                 break;
-            case 20:
+            case Rc5Button_F0:
                 // Use F0 button to reset address.
                 LocAddressSelect = 0;
                 display.fillRect(74, 10, 51, 64, SSD1306_BLACK);
@@ -1045,75 +1108,47 @@ void StateSelectLoc()
                 display.display();
                 Rc5NewData = false;
                 break;
-            case 51:
-                // A button
+            case Rc5Button_A:
+                // A button, when loc address valid store loc address and update data on screen.
                 if (LocAddressSelect > 0)
                 {
                     locInfo.Address = LocAddressSelect;
                     LocLastSelected = 0;
-                    EEPROM.write(EepromLocAddressA, locInfo.Address >> 8);
-                    EEPROM.write(EepromLocAddressA + 1, locInfo.Address & 0xFF);
-                    EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
-
-                    display.fillRect(100, 0, 9, 8, SSD1306_BLACK);
-                    display.setCursor(100, 0);
-                    display.setTextSize(0);
-                    display.print("A");
-                    display.display();
+                    LocStore(EepromLocAddressA, locInfo.Address, LocLastSelected);
+                    ShowSelectecLocInStatusRow("A");
                 }
                 Rc5NewData = false;
                 break;
-            case 52:
-                // B button
+            case Rc5Button_B:
+                // B button, when loc address valid store loc address and update data on screen.
                 if (LocAddressSelect > 0)
                 {
                     locInfo.Address = LocAddressSelect;
                     LocLastSelected = 1;
-                    EEPROM.write(EepromLocAddressB, locInfo.Address >> 8);
-                    EEPROM.write(EepromLocAddressB + 1, locInfo.Address & 0xFF);
-                    EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
-
-                    display.fillRect(100, 0, 9, 8, SSD1306_BLACK);
-                    display.setCursor(100, 0);
-                    display.setTextSize(0);
-                    display.print("B");
-                    display.display();
+                    LocStore(EepromLocAddressB, locInfo.Address, LocLastSelected);
+                    ShowSelectecLocInStatusRow("B");
                 }
                 Rc5NewData = false;
                 break;
-            case 53:
-                // C button
+            case Rc5Button_C:
+                // C button, when loc address valid store loc address and update data on screen.
                 if (LocAddressSelect > 0)
                 {
                     locInfo.Address = LocAddressSelect;
                     LocLastSelected = 2;
-                    EEPROM.write(EepromLocAddressC, locInfo.Address >> 8);
-                    EEPROM.write(EepromLocAddressC + 1, locInfo.Address & 0xFF);
-                    EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
-
-                    display.fillRect(100, 0, 9, 8, SSD1306_BLACK);
-                    display.setCursor(100, 0);
-                    display.setTextSize(0);
-                    display.print("C");
-                    display.display();
+                    LocStore(EepromLocAddressC, locInfo.Address, LocLastSelected);
+                    ShowSelectecLocInStatusRow("C");
                 }
                 Rc5NewData = false;
                 break;
-            case 54:
-                // D button
+            case Rc5Button_D:
+                // D button, when loc address valid store loc address and update data on screen.
                 if (LocAddressSelect > 0)
                 {
                     locInfo.Address = LocAddressSelect;
                     LocLastSelected = 3;
-                    EEPROM.write(EepromLocAddressD, locInfo.Address >> 8);
-                    EEPROM.write(EepromLocAddressD + 1, locInfo.Address & 0xFF);
-                    EEPROM.write(EepromLocAddressLastSelected, LocLastSelected);
-
-                    display.fillRect(100, 0, 9, 8, SSD1306_BLACK);
-                    display.setCursor(100, 0);
-                    display.setTextSize(0);
-                    display.print("D");
-                    display.display();
+                    LocStore(EepromLocAddressD, locInfo.Address, LocLastSelected);
+                    ShowSelectecLocInStatusRow("D");
                 }
                 Rc5NewData = false;
                 break;
@@ -1208,7 +1243,7 @@ bool transitionRc5StopButton()
     bool Result = false;
     if (Rc5NewData == true)
     {
-        if (Rc5Command == 12)
+        if (Rc5Command == Rc5Button_OnOff)
         {
             // Based on central station state transmit power on or off.
             // Based on the status change applicable state will be entered.
@@ -1234,7 +1269,7 @@ bool transitionRc5SelectLocButton()
     bool Result = false;
     if (Rc5NewData == true)
     {
-        if (Rc5Command == 13)
+        if (Rc5Command == Rc5Button_Loc)
         {
             Result     = true;
             Rc5NewData = false;
@@ -1250,7 +1285,7 @@ bool transitionRc5TurnOutButton()
     bool Result = false;
     if (Rc5NewData == true)
     {
-        if (Rc5Command == 14)
+        if (Rc5Command == Rc5Button_TurnOutSingle)
         {
             Result     = true;
             Rc5NewData = false;
@@ -1316,17 +1351,9 @@ bool transitionTurnOutDirectionShowDisable()
  **********************************************************************************************************************/
 void setup()
 {
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-    Serial.begin(57600);
-    Serial.println("Starting");
-#endif
-
     // Init display
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
     {
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-        Serial.println(F("SSD1306 allocation failed"));
-#endif
         for (;;)
             ; // Don't proceed, loop forever
     }
@@ -1422,14 +1449,7 @@ void loop()
             Rc5TogglePrevious = Rc5Toggle;
             Rc5NewData        = true;
 
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-            Serial.print("a:");
-            Serial.print(Rc5Address);
-            Serial.print(" c:");
-            Serial.print(Rc5Command);
-            Serial.print(" t:");
-            Serial.println(Rc5Toggle);
-#endif
+            // Kick state machine after a button change.
             Stm.run();
             previousMillis = millis();
         }
@@ -1439,6 +1459,7 @@ void loop()
 
     if (millis() - previousMillis >= 20)
     {
+        // Update state machine every 20 msec when no other activity was present.
         Stm.run();
         previousMillis = millis();
     }
@@ -1447,14 +1468,7 @@ void loop()
 /***********************************************************************************************************************
  * XpressNet callback function for system status.
  */
-void notifyXNetPower(uint8_t State)
-{
-    XpressNetPowerStat = State;
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-    Serial.print("XnetPower : ");
-    Serial.println(State);
-#endif
-}
+void notifyXNetPower(uint8_t State) { XpressNetPowerStat = State; }
 
 /***********************************************************************************************************************
  * XpressNet callback function for loc data.
@@ -1465,21 +1479,6 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
     bool LocDataValid = true;
 
     uint16_t Address = ((uint16_t)(Adr_High) << 8) | (uint16_t)(Adr_Low);
-
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-    Serial.print("A: ");
-    Serial.print(Address);
-    Serial.print(" S: ");
-    Serial.print(Speed);
-    Serial.print(" D:  ");
-    Serial.print(Steps);
-    Serial.print(" Dir : ");
-    Serial.print(Direction);
-    Serial.print(" F0 : ");
-    Serial.print(F0);
-    Serial.print(" F1 : ");
-    Serial.println(F1);
-#endif
 
     if (locInfo.Address == Address)
     {
@@ -1534,6 +1533,7 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
         }
     }
 
+    // Non  used (for now).
     Busy = Busy;
     Req  = Req;
     F2   = F2;
