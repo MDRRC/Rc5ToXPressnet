@@ -4,24 +4,43 @@ The Rc5 to XpressNet convertor is an interface between an RC5 remote control and
 
 It is based on: 
 
- * An Ardiuno Mega 2560 PRO Embed 
+ * An Ardiuno Mega 2560 PRO Embed when the PCB is used.
  * An [Arduino Mega 2560](https://store.arduino.cc/arduino-mega-2560-rev3) will also work but the board is way bigger. 
  * MAX485 RS485 driver IC.
  * 128*64 pixels OLED SSD1306 I2C display. 
  * TSOP4836 IR receiver.
  
-The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infrared control](https://www.uhlenbrock.de/de_DE/produkte/digizen/I63D744D-001.htm!ArcEntryInfo=0004.9.I63D744D). Will also work with other RC5 remote controls for a TV but the layout and commands may e different, so adjustment of the code by yourself may be required.
+The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infrared control](https://www.uhlenbrock.de/de_DE/produkte/digizen/I63D744D-001.htm!ArcEntryInfo=0004.9.I63D744D). Will also work with other RC5 remote controls for a TV but the layout and commands may be different, so adjustment of the RC5 codes by yourself may be required.
  
-## Functions
- * Control speed, direction and functions (F0..F12) of a locomotive (F11 and F12 are not shown, F10 is shown as 0).
+## Locomotive control
+ * Control speed by pressing up / down button.
+ * Change direction and stop locomotive by pressing left / right button.
+ * Light on / off by pressing F0 / Off button
+ * Change functions (F1..F12) of a locomotive (F11 and F12 are not shown, F10 is shown as 0). Functions F4..F8 and FF9..F12 are changes after pressing button F+4 or F+8.
+ * Select a preprogrammed locomotive by pressing button A..D (Only proprogrammed locomotives can be controlled!).
+ * Control preprogrammed tunrouts by pressing the red/geen buttons abobe the A..D buttons. The turnout number and direction are shonw about 1.5 seconds in the status row. 
  
  ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/loccontrol1.JPG)
  
- * Select a locomotive on one of the 4 loc selection buttons.
+## Locomotive selection
+ * After pressing the Locomotive button
+ * Enter a address for a locomotive
+ * Store the locomotive address by pressing button A..D.
  
  ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/select.JPG)
+
+## Turnouts / accesoiry. 
+ * After pressing the Single turnout button
+ * Enter a address for a turnout
+ * Press F1 or F4 to control the turnout wihtout storing the turnout number.
+ * Store the turnout address by pressing button A..D.
  
- * Control accesory decoders (turn outs for example) (t.b.a.)
+## Configuration 
+ * When OFF is display enter 34567 to enter the config mode. 
+ * To change the XpressNet device address press button 0..9 set set a new addres. By default the XPressNet address is 30.
+ * Press STOP button to toggle between power off and emergency mode.
+ * Press +/- button to toggle between single step or continously update speed when +/- button is pressed. By default STEP is set.
+ * To exit press F4, when a change was done to the settings an automatic reset will be performed to activate the new settings.  
 
 ## Tested with
  * [MDRRC-II (Lite)](https://robertdotevers.wordpress.com/). 
@@ -42,19 +61,29 @@ Below table with connections and here ![pdf of schematic](https://github.com/MDR
 
 And of course put the VCC and GND of the SSD1306 / MAX485 / TSOP4836 to 3V3 of the Arduino Mega 2560 board (5V is also OK).
 
-Below the PCB. The display and TSOP4836 IR receiver are mounted on the solder side!
+Below the PCB. The display and TSOP4836 IR receiver are mounted on the solder side! 
 
 ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/pcb_comp_side.JPG)
 
 ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/pcb_solder_side.JPG)
 
-If your are interested in a PCB sent me a mail, PCB cost 3.50 Euro exclusing post and package.
+If your are interested in a PCB sent me a mail, PCB cost 4.50 Euro including post and package for the Netherland and 6.00 for EU countries (including post and package). 
 
 ## Used library's
 If you want to build the code yourself or update / change the code following library's are required.
  * [Rc5](https://github.com/guyc/RC5) for IR RC5 receive.
- * [StateMachine](https://github.com/MDRRC/StateMachine) State machine forked from ([jrullan](https://github.com/jrullan/StateMachine)) 
+ * [StateMachine](https://github.com/MDRRC/StateMachine) State machine forked from ([jrullan](https://github.com/jrullan/StateMachine))
+ * [LinkedList for StateMachine](https://github.com/ivanseidel/LinkedList) for the [StateMachine](https://github.com/MDRRC/StateMachine). Probably you need to remove the test.cpp to avoid build errors.  
  * [XpressNet Client Library](http://pgahtow.de/wiki/index.php?title=XpressNet) for XpressNet protocol handling.
  * [Adafruit-SSD1306-Library](https://github.com/adafruit/Adafruit_SSD1306) to control the display.
  * [Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library) for graphic control of the display.
+ 
+## Programming without building the code by yourself
+Although the Arduino enviroment is relative easy to use, adding libraries and building / selecting the correct board might be difficult when someone starts with Arduino. So this part describes how to flash the Arduino Mega 2560 (Pro Ebedded) without building the code yourself.
+
+ * First download and install the Arduino IDE.
+ * Download the ZIP file from this project and unzip it.
+ * Open a DOS box 
+ * Copy text below and ADJUST the location of Arduino (ArduinoLocationOnYourPc), the used com port (-P) and the location of the HEX file after -Uflash:w:       
+C:\ArduinoLocationOnYourPc\hardware\tools\avr/bin/avrdude -CC:\ArduinoLocation\hardware\tools\avr/etc/avrdude.conf -v -patmega2560 -cwiring -PCOM25 -b115200 -D -Uflash:w:Rc5XpNet.hex:i
 
