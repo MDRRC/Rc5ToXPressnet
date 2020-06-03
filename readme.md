@@ -78,12 +78,14 @@ If you want to build the code yourself or update / change the code following lib
  * [Adafruit-SSD1306-Library](https://github.com/adafruit/Adafruit_SSD1306) to control the display.
  * [Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library) for graphic control of the display.
  
-## Programming without building the code by yourself
+## Programming without building the code by yourself on Windows
 Although the Arduino enviroment is relative easy to use, adding libraries and building / selecting the correct board might be difficult when someone starts with Arduino. So this part describes how to flash the Arduino Mega 2560 (Pro Ebedded) without building the code yourself.
 
  * First download and install the Arduino IDE.
  * Download the ZIP file from this project and unzip it.
- * Open a DOS box 
- * Copy text below and ADJUST the location of Arduino (ArduinoLocationOnYourPc), the used com port (-P) and the location of the HEX file after -Uflash:w:       
-C:\ArduinoLocationOnYourPc\hardware\tools\avr/bin/avrdude -CC:\ArduinoLocation\hardware\tools\avr/etc/avrdude.conf -v -patmega2560 -cwiring -PCOM25 -b115200 -D -Uflash:w:Rc5XpNet.hex:i
+ * Open flash.bat with a text editor and correct if required the location of the Arduino executable path and the comport. 
+ * Save and close the file.
+ * Double click on the batch file. At the end of the flash cycle a screens as shown below should be visible, if a lot of errors are shown check the avrdude location and / or com port.
+ ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/flashbatexample.JPG)
+ * The Mega2560 should now be programmed and when ready the start screen appears on the display.
 
