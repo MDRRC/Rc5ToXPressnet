@@ -16,9 +16,9 @@ The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infr
  * Control speed by pressing up / down button.
  * Change direction and stop locomotive by pressing left / right button.
  * Light on / off by pressing F0 / Off button
- * Change functions (F1..F12) of a locomotive (F11 and F12 are not shown, F10 is shown as 0). Functions F4..F8 and FF9..F12 are changes after pressing button F+4 or F+8.
- * Select a preprogrammed locomotive by pressing button A..D (Only proprogrammed locomotives can be controlled!).
- * Control preprogrammed tunrouts by pressing the red/geen buttons abobe the A..D buttons. The turnout number and direction are shonw about 1.5 seconds in the status row. 
+ * Change functions (F1..F12) of a locomotive (F11 and F12 are not shown, F10 is shown as 0). Functions F4..F8 and F9..F12 are changed after pressing button F+4 or F+8.
+ * Select a preprogrammed locomotive by pressing button A..D (Only programmed locomotives can be controlled!).
+ * Control preprogrammed tunrouts by pressing the red/geen buttons above the A..D buttons. The turnout number and direction are shown for about 1.5 seconds in the status row. 
  
  ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/loccontrol1.JPG)
  
@@ -79,7 +79,7 @@ If you want to build the code yourself or update / change the code following lib
  * [Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library) for graphic control of the display.
  
 ## Programming without building the code by yourself on Windows
-Although the Arduino enviroment is relative easy to use, adding libraries and building / selecting the correct board might be difficult when someone starts with Arduino. So this part describes how to flash the Arduino Mega 2560 (Pro Ebedded) without building the code yourself.
+Although the Arduino enviroment is relative easy to use, adding libraries and building / selecting the correct board might be difficult when someone starts with Arduino. So this part describes how to flash the Arduino Mega 2560 (Pro Embed) without building the code yourself.
 
  * First download and install the Arduino IDE.
  * Download the ZIP file from this project and unzip it.
