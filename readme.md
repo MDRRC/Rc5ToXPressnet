@@ -1,4 +1,4 @@
-# Rc5 To XPressNet converter (Work in progress!)
+# Rc5 To XPressNet converter
 
 The Rc5 to XpressNet convertor is an interface between an RC5 remote control and the [XPressnet bus](www.lenzusa.com/1newsite1/Manuals/xpressnet.pdf). 
 
@@ -10,7 +10,7 @@ It is based on:
  * 128*64 pixels OLED SSD1306 I2C display. 
  * TSOP4836 IR receiver.
  
-The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infrared control](https://www.uhlenbrock.de/de_DE/produkte/digizen/I63D744D-001.htm!ArcEntryInfo=0004.9.I63D744D). Will also work with other RC5 remote controls for a TV but the layout and commands may be different, so adjustment of the RC5 codes by yourself may be required.
+The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infrared control](https://www.uhlenbrock.de/de_DE/produkte/digizen/I63D744D-001.htm!ArcEntryInfo=0004.9.I63D744D). Will also work with other RC5 remote controls for a TV but the layout and commands may be different, so adjustment of the RC5 codes by yourself may be required. Locomotives and accesoiry decoders (like tunrout decoders) can be controlled. Programming of CV's for example is NOT supported.  
  
 ## Locomotive control
  * Control speed by pressing up / down button.
