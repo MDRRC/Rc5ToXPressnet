@@ -18,7 +18,7 @@ The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infr
  * Light on / off by pressing F0 / Off button
  * Change functions (F1..F12) of a locomotive (F11 and F12 are not shown, F10 is shown as 0). Functions F4..F8 and F9..F12 are changed after pressing button F+4 or F+8.
  * Select a preprogrammed locomotive by pressing button A..D (Only programmed locomotives can be controlled!).
- * Control preprogrammed tunrouts by pressing the red/geen buttons above the A..D buttons. The turnout number and direction are shown for about 1.5 seconds in the status row. 
+ * Control preprogrammed turnouts by pressing the red/geen buttons above the A..D buttons. The turnout number and direction are shown for about 1.5 seconds in the status row. 
  
  ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/loccontrol1.JPG)
  
@@ -26,6 +26,7 @@ The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infr
  * After pressing the Locomotive button
  * Enter a address for a locomotive
  * Store the locomotive address by pressing button A..D.
+ * Exit locomotive selection by pressing the Loc symbol button. 
  
  ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/select.JPG)
 
