@@ -33,8 +33,12 @@ The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infr
 ## Turnouts / accesoiry. 
  * After pressing the Single turnout button
  * Enter a address for a turnout
- * Press F1 or F4 to control the turnout wihtout storing the turnout number.
+ * Press F1 or F4 to control the turnout without storing the turnout number.
  * Store the turnout address by pressing button A..D.
+ 
+ ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/turnout.JPG)
+ 
+  * Remark, the "double turnout" switch is NOT supported for entering turnout sequences.
  
 ## Configuration 
  * When OFF is display enter 34567 to enter the config mode. 
@@ -42,6 +46,7 @@ The Rc5ToXPressnet is intended to used with for example an [Uhlenbrock Iris infr
  * Press STOP button to toggle between power off and emergency mode.
  * Press +/- button to toggle between single step or continously update speed when +/- button is pressed. By default STEP is set.
  * To exit press F4, when a change was done to the settings an automatic reset will be performed to activate the new settings.  
+ ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/config.JPG)
 
 ## Tested with
  * [MDRRC-II (Lite)](https://robertdotevers.wordpress.com/). 
