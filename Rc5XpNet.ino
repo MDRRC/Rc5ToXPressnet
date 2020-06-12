@@ -239,7 +239,7 @@ void ShowInitSreen(void)
     display.setTextColor(SSD1306_WHITE); // Draw white text
     display.setCursor(0, 26);
     display.println(F(" RC5 XPNET"));
-    display.print(F("   1.0.0"));
+    display.print(F("   1.0.1"));
     display.display();
 }
 
@@ -1524,8 +1524,12 @@ void StateConfig()
                 display.print(XpNetAddress);
                 display.display();
 
-                EEPROM.write(EepromXpNetAddress, XpNetAddress);
-                ConfigChanged = true;
+                // Only store addresses between 1 and 31
+                if (XpNetAddress != 0)
+                {
+                    EEPROM.write(EepromXpNetAddress, XpNetAddress);
+                    ConfigChanged = true;
+                }
 
                 Rc5NewData = false;
                 break;
