@@ -69,6 +69,7 @@ static uint32_t LocUpdateTimeOut         = 0;
 static uint16_t TurnOutAddress           = 0;
 static uint32_t TurnOutAddressTimeout    = 0;
 static uint32_t TurnOutSymbolTimeOut     = 0;
+static uint32_t LocInfoUpdateTimeOut     = 0;
 static uint8_t FunctionOffset            = 0;
 static uint32_t FunctionOffsetTime       = 0;
 static bool LocInfoChanged               = false;
@@ -239,7 +240,7 @@ void ShowInitSreen(void)
     display.setTextColor(SSD1306_WHITE); // Draw white text
     display.setCursor(0, 26);
     display.println(F(" RC5 XPNET"));
-    display.print(F("   1.0.1"));
+    display.print(F("   1.0.2"));
     display.display();
 }
 
@@ -1793,6 +1794,19 @@ bool transitionTurnOutDirectionShowDisable()
 }
 
 /***********************************************************************************************************************
+ */
+bool transitionUpdateLocData()
+{
+    if ((millis() - LocInfoUpdateTimeOut) > 250)
+    {
+        LocInfoUpdateTimeOut = millis();
+        XPNet.getLocoInfo(locInfo.Address >> 8, locInfo.Address & 0xFF);
+        locInfoRefresh = true;
+    }
+    return (false);
+}
+
+/***********************************************************************************************************************
    E X P O R T E D   F U N C T I O N S
  **********************************************************************************************************************/
 
@@ -1813,7 +1827,12 @@ void setup()
     ShowInitSreen();
     UpdateStatusRow(F("CONNECTING"), true);
 
-    previousMillis = millis();
+    previousMillis        = millis();
+    LocInfoUpdateTimeOut  = previousMillis;
+    LocUpdateTimeOut      = previousMillis;
+    TurnOutAddressTimeout = previousMillis;
+    TurnOutSymbolTimeOut  = previousMillis;
+    LocInfoUpdateTimeOut  = previousMillis;
 
     locInfoPrevious.Address = 0xFFFF;
 
@@ -1840,6 +1859,7 @@ void setup()
     StmStatePowerOn->addTransition(&transitionRc5TurnOutButton, StmStateTurnOut);
     StmStatePowerOn->addTransition(&transitionFunctionOffSetReset, StmStatePowerOn);
     StmStatePowerOn->addTransition(&transitionTurnOutDirectionShowDisableStatusRow, StmStatePowerOn);
+    StmStatePowerOn->addTransition(&transitionUpdateLocData, StmStatePowerOn);
 
     StmStateEmergency->addTransition(&transitionPowerOn, StmStateGetLocInfo);
     StmStateEmergency->addTransition(&transitionPowerOff, StmStatePowerOff);
