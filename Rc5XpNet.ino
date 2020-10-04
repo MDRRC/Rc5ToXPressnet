@@ -1076,14 +1076,14 @@ void StatePowerOn()
 
                 switch (locInfo.Steps)
                 {
-                case 1:
+                case 0:
                     // 14 speed docoder.
                     if (LocActualSpeed > 14)
                     {
                         LocActualSpeed = 14;
                     }
                     XPNet.setLocoDrive(locInfo.Address >> 8, locInfo.Address & 0xFF, locInfo.Steps,
-                        SpeedStep28TableToDcc[LocActualSpeed] | LocActualDirection);
+                        LocActualSpeed | LocActualDirection);
 
                     break;
                 case 2:
@@ -1906,6 +1906,8 @@ void setup()
     StmStateConfig->addTransition(&transitionPowerOn, StmStateGetLocInfo);
     StmStateConfig->addTransition(&transitionEmergency, StmStateEmergency);
     StmStateConfig->addTransition(&transitionShortCircuit, StmStateShortCircuit);
+
+    Serial.begin(115200);
 }
 
 /**
@@ -1975,6 +1977,7 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
 
     uint16_t Address = ((uint16_t)(Adr_High) << 8) | (uint16_t)(Adr_Low);
 
+    // Received loc address same as select then update data.
     if (locInfo.Address == Address)
     {
         locInfo.Address   = Address;
@@ -1993,6 +1996,8 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
         case 4: locInfo.Steps = Steps; break;
         default: LocDataValid = false; break;
         }
+
+        Serial.println(locInfo.Steps);
     }
 
     if (LocDataValid == true)
