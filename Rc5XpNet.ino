@@ -1305,11 +1305,7 @@ void StateGetLocInfo()
     }
     else
     {
-        if (LocInfoChanged == false)
-        {
-            XPNet.getLocoInfo(locInfo.Address >> 8, locInfo.Address & 0xFF);
-        }
-        else
+        if (LocInfoChanged == true)
         {
             switch (locInfo.Steps)
             {
@@ -1889,6 +1885,7 @@ void setup()
     StmStateGetLocInfo->addTransition(&transitionShortCircuit, StmStateShortCircuit);
     StmStateGetLocInfo->addTransition(&transitionRc5StopButton, StmStatePowerOff);
     StmStateGetLocInfo->addTransition(&transitionRc5SelectLocButton, StmStateSelectLoc);
+    StmStateGetLocInfo->addTransition(&transitionUpdateLocData, StmStateGetLocInfo);
 
     StmStateSelectLoc->addTransition(&transitionPowerOn, StmStateGetLocInfo);
     StmStateSelectLoc->addTransition(&transitionPowerOff, StmStatePowerOff);
