@@ -227,6 +227,13 @@ const uint8_t SpeedStep28TableToDcc[29]
 const uint8_t SpeedStep28TableFromDcc[32] = { 0, 0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 0, 0, 2, 4, 6, 8,
     10, 12, 14, 16, 18, 20, 22, 24, 26, 28 };
 
+/* Conversion table for normal speed to "15" steps DCC/MM speed. Speed step 1 is emergency stop and skipped by this
+ * table. */
+const uint8_t SpeedStep14TableToMMDcc[15] = { 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+
+/* Conversion table for "15" steps DCC/MM speed to normal speed. */
+const uint8_t SpeedStep14TableFromMMDcc[16] = { 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
+
 /***********************************************************************************************************************
    L O C A L   F U N C T I O N S
  **********************************************************************************************************************/
@@ -309,13 +316,11 @@ void ShowLocInfo()
 
     // Show speed
     display.setCursor(3, 31);
-    if (locInfo.Steps == 2)
+    switch (locInfo.Steps)
     {
-        display.print(SpeedStep28TableFromDcc[locInfo.Speed]);
-    }
-    else
-    {
-        display.print(locInfo.Speed);
+    case 0: display.print(SpeedStep14TableFromMMDcc[locInfo.Speed]); break;
+    case 2: display.print(SpeedStep28TableFromDcc[locInfo.Speed]); break;
+    default: display.print(locInfo.Speed); break;
     }
 
     // Show direction
@@ -1077,13 +1082,13 @@ void StatePowerOn()
                 switch (locInfo.Steps)
                 {
                 case 0:
-                    // 14 speed docoder.
-                    if (LocActualSpeed > 14)
+                    // 14 speed decoder.
+                    if (LocActualSpeed >= 14)
                     {
                         LocActualSpeed = 14;
                     }
                     XPNet.setLocoDrive(locInfo.Address >> 8, locInfo.Address & 0xFF, locInfo.Steps,
-                        LocActualSpeed | LocActualDirection);
+                        SpeedStep14TableToMMDcc[LocActualSpeed] | LocActualDirection);
 
                     break;
                 case 2:
@@ -1306,13 +1311,11 @@ void StateGetLocInfo()
         }
         else
         {
-            if (locInfo.Steps == 2)
+            switch (locInfo.Steps)
             {
-                LocActualSpeed = SpeedStep28TableFromDcc[locInfo.Speed];
-            }
-            else
-            {
-                LocActualSpeed = locInfo.Speed;
+            case 0: LocActualSpeed = SpeedStep14TableFromMMDcc[locInfo.Speed]; break;
+            case 2: LocActualSpeed = SpeedStep28TableFromDcc[locInfo.Speed]; break;
+            default: LocActualSpeed = locInfo.Speed; break;
             }
 
             locInfoRefresh = false;
@@ -1906,8 +1909,6 @@ void setup()
     StmStateConfig->addTransition(&transitionPowerOn, StmStateGetLocInfo);
     StmStateConfig->addTransition(&transitionEmergency, StmStateEmergency);
     StmStateConfig->addTransition(&transitionShortCircuit, StmStateShortCircuit);
-
-    Serial.begin(115200);
 }
 
 /**
@@ -1996,8 +1997,6 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
         case 4: locInfo.Steps = Steps; break;
         default: LocDataValid = false; break;
         }
-
-        Serial.println(locInfo.Steps);
     }
 
     if (LocDataValid == true)
@@ -2009,14 +2008,12 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
 
             if (locInfoRefresh == true)
             {
+                // Convert received speed to "normal" speeds for the user.
                 switch (locInfo.Steps)
                 {
-                case 0:
-                case 4: LocActualSpeed = Speed; break;
-                case 2:
-                    // Convert DCC speed to normal speed
-                    LocActualSpeed = SpeedStep28TableFromDcc[Speed];
-                    break;
+                case 0: break;
+                case 2: LocActualSpeed = SpeedStep28TableFromDcc[Speed]; break;
+                default: LocActualSpeed = Speed; break;
                 }
 
                 if (locInfo.Direction == 1)
