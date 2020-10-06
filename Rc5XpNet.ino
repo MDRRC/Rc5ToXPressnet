@@ -82,6 +82,7 @@ static uint8_t XpNetAddress              = 30;
 static bool ConfigChanged                = false;
 static bool ButtonOnOffEmergency         = false;
 static bool ButtonBehaviourPlusMinus     = false;
+static bool AcOption                     = false;
 /**
  * Definitions for EEPROM addresses.
  */
@@ -98,6 +99,7 @@ int EepromAddressTurnoutA        = 0x12;
 int EepromAddressTurnoutB        = 0x14;
 int EepromAddressTurnoutC        = 0x16;
 int EepromAddressTurnoutD        = 0x18;
+int EepromAddressAcOption        = 0x1A;
 
 /**
  * Button definitions.
@@ -247,7 +249,7 @@ void ShowInitSreen(void)
     display.setTextColor(SSD1306_WHITE); // Draw white text
     display.setCursor(0, 26);
     display.println(F(" RC5 XPNET"));
-    display.print(F("   1.0.2"));
+    display.print(F("   1.0.3"));
     display.display();
 }
 
@@ -555,6 +557,19 @@ void StateInit()
             // Only one speed step step when pressed continuously.
             ButtonBehaviourPlusMinus = false;
             EEPROM.write(EepromAddressUpDown, 0);
+            break;
+        }
+
+        // Get Ac option. Ac means Alternative control. When false the +/- can be used
+        // to change direction at speed 0 and continue driving. When true only speed
+        // increase / decrease is possible, change direction with left/right button.
+        switch (EEPROM.read(EepromAddressAcOption))
+        {
+        case 0: AcOption = false; break;
+        case 1: AcOption = true; break;
+        default:
+            AcOption = true;
+            EEPROM.write(EepromAddressAcOption, 1);
             break;
         }
 
@@ -905,8 +920,7 @@ void StatePowerOn()
             case Rc5Button_8:
             case Rc5Button_9: Rc5NewData = false; break;
             case Rc5Button_Right:
-                // Right button, stop and change direction.
-                LocActualSpeed             = 0;
+                // Right button, change direction.
                 TransmitSpeedDirectionData = true;
                 if (LocActualDirection == 0x0)
                 {
@@ -914,8 +928,7 @@ void StatePowerOn()
                 }
                 break;
             case Rc5Button_Left:
-                // Left button, stop and change direction.
-                LocActualSpeed             = 0;
+                // Left button, change direction.
                 TransmitSpeedDirectionData = true;
                 if (LocActualDirection == 0x80)
                 {
@@ -974,42 +987,61 @@ void StatePowerOn()
                 break;
             case Rc5Button_Plus:
                 // + button
-                TransmitSpeedDirectionData = true;
-                if (LocActualDirection == 0x80)
+                if (AcOption == true)
                 {
                     LocActualSpeed++;
+                    TransmitSpeedDirectionData = true;
                 }
                 else
                 {
-                    if (LocActualSpeed >= 1)
+                    TransmitSpeedDirectionData = true;
+                    if (LocActualDirection == 0x80)
                     {
-                        LocActualSpeed--;
+                        LocActualSpeed++;
                     }
                     else
                     {
-                        // Speed 0, change direction.
-                        LocActualDirection = 0x80;
+                        if (LocActualSpeed > 0)
+                        {
+                            LocActualSpeed--;
+                        }
+                        else
+                        {
+                            // Speed 0, change direction.
+                            LocActualDirection = 0x80;
+                        }
                     }
                 }
                 break;
             case Rc5Button_Minus:
                 // - button
-                TransmitSpeedDirectionData = true;
-                if (LocActualDirection == 0x80)
+                if (AcOption == true)
                 {
-                    if (LocActualSpeed >= 1)
+                    if (LocActualSpeed > 0)
                     {
                         LocActualSpeed--;
-                    }
-                    else
-                    {
-                        // Speed 0, change direction.
-                        LocActualDirection = 0x0;
+                        TransmitSpeedDirectionData = true;
                     }
                 }
                 else
                 {
-                    LocActualSpeed++;
+                    TransmitSpeedDirectionData = true;
+                    if (LocActualDirection == 0x80)
+                    {
+                        if (LocActualSpeed > 0)
+                        {
+                            LocActualSpeed--;
+                        }
+                        else
+                        {
+                            // Speed 0, change direction.
+                            LocActualDirection = 0x0;
+                        }
+                    }
+                    else
+                    {
+                        LocActualSpeed++;
+                    }
                 }
                 break;
             case Rc5Button_TurnOutDiversing_1:
@@ -1457,16 +1489,16 @@ void StateConfig()
         LocAddressSelect = 0;
         display.fillRect(0, 8, 128, 56, SSD1306_BLACK);
         display.setTextSize(1);
-        display.setCursor(5, 20);
+        display.setCursor(5, 15);
         display.print("XPNet   :");
-        display.setCursor(60, 20);
+        display.setCursor(60, 15);
         display.print(XpNetAddress);
 
         // Show stop button behavior
-        display.setCursor(5, 30);
+        display.setCursor(5, 25);
         display.print("Stop    :");
 
-        display.setCursor(60, 30);
+        display.setCursor(60, 25);
         switch ((uint8_t)EEPROM.read(EepromAddressPower))
         {
         case 0: display.print("Power Off"); break;
@@ -1478,10 +1510,10 @@ void StateConfig()
         }
 
         // Show behavior of up/down buttons
-        display.setCursor(5, 40);
+        display.setCursor(5, 35);
         display.print("Up/Down :");
 
-        display.setCursor(60, 40);
+        display.setCursor(60, 35);
         switch ((uint8_t)EEPROM.read(EepromAddressUpDown))
         {
         case 0: display.print("Step"); break;
@@ -1490,6 +1522,17 @@ void StateConfig()
             EEPROM.write(EepromAddressUpDown, 0);
             display.print("Step");
             break;
+        }
+
+        // AcOption
+        display.setCursor(5, 45);
+        display.print("AcOption:");
+
+        display.setCursor(60, 45);
+        switch ((uint8_t)EEPROM.read(EepromAddressAcOption))
+        {
+        case 0: display.print("Off "); break;
+        case 1: display.print("On      "); break;
         }
 
         display.display();
@@ -1519,8 +1562,8 @@ void StateConfig()
                     XpNetAddress = 0;
                 }
 
-                display.fillRect(60, 20, 51, 10, SSD1306_BLACK);
-                display.setCursor(60, 20);
+                display.fillRect(60, 15, 51, 10, SSD1306_BLACK);
+                display.setCursor(60, 15);
                 display.print(XpNetAddress);
                 display.display();
 
@@ -1532,6 +1575,30 @@ void StateConfig()
                 }
 
                 Rc5NewData = false;
+                break;
+            case Rc5Button_FPlus4:
+                // AcOption off
+                AcOption = false;
+                display.fillRect(60, 45, 51, 10, SSD1306_BLACK);
+                display.setCursor(60, 45);
+                display.print("Off ");
+                display.display();
+
+                EEPROM.write(EepromAddressAcOption, 0);
+                ConfigChanged = true;
+                Rc5NewData    = false;
+                break;
+            case Rc5Button_FPlus8:
+                // AcOption on
+                AcOption = true;
+                display.fillRect(60, 45, 51, 10, SSD1306_BLACK);
+                display.setCursor(60, 45);
+                display.print("On");
+                display.display();
+
+                EEPROM.write(EepromAddressAcOption, 1);
+                ConfigChanged = true;
+                Rc5NewData    = false;
                 break;
             case Rc5Button_F4:
                 if (ConfigChanged == true)
@@ -1548,8 +1615,8 @@ void StateConfig()
                 break;
             case Rc5Button_OnOff:
                 // Show stop button behavior
-                display.fillRect(60, 30, 60, 10, SSD1306_BLACK);
-                display.setCursor(60, 30);
+                display.fillRect(60, 25, 60, 10, SSD1306_BLACK);
+                display.setCursor(60, 25);
                 switch ((uint8_t)EEPROM.read(EepromAddressPower))
                 {
                 case 0:
@@ -1572,8 +1639,8 @@ void StateConfig()
             case Rc5Button_Plus:
             case Rc5Button_Minus:
                 // Switch behavior of up/down buttons
-                display.fillRect(60, 40, 51, 10, SSD1306_BLACK);
-                display.setCursor(60, 40);
+                display.fillRect(60, 35, 51, 10, SSD1306_BLACK);
+                display.setCursor(60, 35);
                 switch ((uint8_t)EEPROM.read(EepromAddressUpDown))
                 {
                 case 0:
@@ -1906,6 +1973,8 @@ void setup()
     StmStateConfig->addTransition(&transitionPowerOn, StmStateGetLocInfo);
     StmStateConfig->addTransition(&transitionEmergency, StmStateEmergency);
     StmStateConfig->addTransition(&transitionShortCircuit, StmStateShortCircuit);
+
+    Serial.begin(57600);
 }
 
 /**
@@ -1987,6 +2056,7 @@ void notifyLokAll(uint8_t Adr_High, uint8_t Adr_Low, boolean Busy, uint8_t Steps
         // Function F5..F12, higher functions are not processed.
         locInfo.Functions |= ((uint16_t)(F1) << 5);
 
+        Serial.println(Steps);
         switch (Steps)
         {
         case 0:
