@@ -249,7 +249,7 @@ void ShowInitSreen(void)
     display.setTextColor(SSD1306_WHITE); // Draw white text
     display.setCursor(0, 26);
     display.println(F(" RC5 XPNET"));
-    display.print(F("   1.0.3"));
+    display.print(F("   9.9.9"));
     display.display();
 }
 
