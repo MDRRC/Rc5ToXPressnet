@@ -918,21 +918,26 @@ void StatePowerOn()
             case Rc5Button_6:
             case Rc5Button_7:
             case Rc5Button_8:
-            case Rc5Button_9: Rc5NewData = false; break;
+            case Rc5Button_9:
+                // All buttons above are not used in power on...
+                Rc5NewData = false;
+                break;
             case Rc5Button_Right:
-                // Right button, change direction.
-                TransmitSpeedDirectionData = true;
+                // Right button, stop and change direction when not in forward direction.
                 if (LocActualDirection == 0x0)
                 {
-                    LocActualDirection = 0x80;
+                    LocActualSpeed             = 0;
+                    LocActualDirection         = 0x80;
+                    TransmitSpeedDirectionData = true;
                 }
                 break;
             case Rc5Button_Left:
-                // Left button, change direction.
-                TransmitSpeedDirectionData = true;
+                // Left button, stop and change direction when not in backward direction.
                 if (LocActualDirection == 0x80)
                 {
-                    LocActualDirection = 0x0;
+                    LocActualSpeed             = 0;
+                    LocActualDirection         = 0x0;
+                    TransmitSpeedDirectionData = true;
                 }
                 break;
             case Rc5Button_LightOff:
@@ -1248,7 +1253,7 @@ void StateTurnOut()
                 TurnOutStoreAndUpdateIndication(EepromAddressTurnoutA, TurnOutAddress, "A");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
-                TurnOutDirection = 0;
+                TurnOutDirection = 1;
                 break;
             case Rc5Button_TurnOutDiversing_2:
                 // Red button above B, store turnout address
@@ -1261,7 +1266,7 @@ void StateTurnOut()
                 // Green button above B, store turnout address
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
-                TurnOutDirection = 0;
+                TurnOutDirection = 1;
                 break;
             case Rc5Button_TurnOutDiversing_3:
                 // Red button above C, store turnout address
@@ -1275,11 +1280,10 @@ void StateTurnOut()
                 TurnOutStoreAndUpdateIndication(EepromAddressTurnoutC, TurnOutAddress, "C");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
-                TurnOutDirection = 0;
+                TurnOutDirection = 1;
                 break;
             case Rc5Button_TurnOutDiversing_4:
                 // Red button above D, store turnout address
-
                 TurnOutStoreAndUpdateIndication(EepromAddressTurnoutD, TurnOutAddress, "D");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
@@ -1290,7 +1294,7 @@ void StateTurnOut()
                 TurnOutStoreAndUpdateIndication(EepromAddressTurnoutD, TurnOutAddress, "D");
                 Rc5NewData       = false;
                 SendTurnoutData  = true;
-                TurnOutDirection = 0;
+                TurnOutDirection = 1;
                 break;
             default: break;
             }
