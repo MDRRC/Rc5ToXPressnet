@@ -45,7 +45,7 @@ The Rc5ToXpressNet is intended to used with for example an [Uhlenbrock Iris infr
  * To change the XpressNet device address press button 0..9 set set a new addres. By default the XPressNet address is 30.
  * Press STOP button to toggle between power off and emergency mode.
  * Press +/- button to toggle between single step or continously update speed when +/- button is pressed. By default STEP is set.
- * Press F4+ / F8+ button to disable and enable the AC option. When the AC option is emabled the locomotive won't change direction when the actual speed is 0.
+ * Press F4+ / F8+ button to disable and enable the AC option. When the AC option is enabled the locomotive won't change direction when the actual speed is 0 using the +/- button.
  * To exit press F4, when a change was done to the settings an automatic reset will be performed to activate the new settings.  
  ![](https://github.com/MDRRC/Rc5ToXPressnet/blob/master/Doc/config.JPG)
 
